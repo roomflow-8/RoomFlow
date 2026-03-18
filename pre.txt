@@ -1,0 +1,38 @@
+#mariaDB 설치
+sudo apt-get -y install mariadb-server
+
+# MariaDB 실행 중인지 확인
+sudo systemctl status mariadb
+
+#aws linux에서 mariaDB admin 등록하기
+sudo mysqladmin -u root password '비밀번호'
+
+sudo mysql;
+
+#mysql에서
+alter user root@localhost identified via mysql_native_password using password('비밀번호');
+flush privileges;
+
+exit
+
+#login
+sudo mysql -u root -p;
+
+#mysql에서 root에 권한 부여
+GRANT ALL PRIVILEGES ON roomflow.* TO 'root'@'%' identified by '비밀번호';
+FLUSH PRIVILEGES;
+
+exit
+
+#원격접속 허용 vi수정
+sudo vi /etc/mysql/mariadb.conf.d/50-server.cnf
+#bind-address            = 127.0.0.1
+bind-address            = 0.0.0.0
+
+#원격 접속
+sudo mysql -h mariadb_ip -u root -p;
+
+#aws 보안그룹 인바운드 규칙편집 - mariadb 3306 포트 추가
+
+#로컬에서 aws mariadb 접속
+sudo mysql -h 13.125.100.216 -u root -p --skip-ssl;
