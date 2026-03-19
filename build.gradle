@@ -34,6 +34,7 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+
     implementation 'com.querydsl:querydsl-jpa:5.0.0:jakarta'
     annotationProcessor "com.querydsl:querydsl-apt:5.0.0:jakarta"
     annotationProcessor "jakarta.annotation:jakarta.annotation-api"
@@ -43,6 +44,32 @@ dependencies {
     implementation 'org.mapstruct:mapstruct:1.6.3'
     annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
     annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+
+//    //lombok Test
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+
+}
+
+/*
+2026.03.19. Q클래스 clean 코드 추가
+ */
+// 1. Q클래스 생성 경로를 변수로 지정
+def querydslDir = "src/main/generated"
+
+// 3. 소스 세트에 생성된 Q클래스 경로 추가 (IDE 인식용)
+sourceSets {
+    main.java.srcDirs += [ querydslDir ]
+}
+
+// 4. 컴파일 시 Q클래스가 생성될 위치를 지정
+tasks.withType(JavaCompile) {
+    options.getGeneratedSourceOutputDirectory().set(file(querydslDir))
+}
+
+// 5. 빌드 시 기존 생성 파일 삭제
+clean {
+    delete file(querydslDir)
 }
 
 tasks.named('test') {

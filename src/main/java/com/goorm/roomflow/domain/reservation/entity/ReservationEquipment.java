@@ -1,5 +1,6 @@
 package com.goorm.roomflow.domain.reservation.entity;
 
+import com.goorm.roomflow.domain.BaseEntity;
 import com.goorm.roomflow.domain.equipment.entity.Equipment;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
