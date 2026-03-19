@@ -1,0 +1,31 @@
+#calendarPicker {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
+}
+
+.calendar-wrap .flatpickr-calendar.inline {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+.calendar-wrap .flatpickr-days,
+.calendar-wrap .dayContainer {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+}
+
+.calendar-wrap .flatpickr-rContainer,
+.calendar-wrap .flatpickr-weekdays,
+.calendar-wrap .flatpickr-innerContainer {
+    width: 100% !important;
+}
+
+.calendar-wrap .flatpickr-day {
+    max-width: none !important;
+}

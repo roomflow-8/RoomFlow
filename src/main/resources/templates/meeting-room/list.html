@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link rel="stylesheet" th:href="@{/css/meeting-room.css}">
+</head>
+
+<body class="min-h-screen bg-[#fafafa]">
+
+<div th:replace="~{fragments/header :: header}"></div>
+
+<main class="max-w-7xl mx-auto px-6 py-8">
+    <div class="grid grid-cols-12 gap-8">
+
+        <aside class="col-span-4">
+            <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">날짜 선택</h2>
+
+                <form method="get" th:action="@{/rooms}" class="space-y-4">
+                    <input type="hidden"
+                           id="selectedDate"
+                           name="date"
+                           th:value="${selectedDate}"
+                           th:data-date="${selectedDate}" />
+
+                    <div class="calendar-wrap">
+                        <input type="text" id="calendarPicker" />
+                    </div>
+                </form>
+            </div>
+        </aside>
+
+        <section class="col-span-8">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">
+                    <span th:text="${selectedDate}"></span> 회의실
+                </h2>
+                <p class="text-sm text-gray-500">
+                    총
+                    <span class="font-semibold"
+                          th:text="${meetingRoomList.availableRoomCount}"></span>
+                    개의 회의실 이용 가능
+                </p>
+            </div>
+
+            <div class="space-y-4">
+                <th:block th:each="room : ${meetingRoomList.rooms()}">
+                    <div th:replace="~{meeting-room/card :: card(room=${room}, selectedDate=${selectedDate})}"></div>
+                </th:block>
+            </div>
+        </section>
+
+    </div>
+</main>
+
+<script th:src="@{/js/meeting-room.js}"></script>
+</body>
+</html>

@@ -1,10 +1,8 @@
 package com.goorm.roomflow.domain.room.entity;
 
+import com.goorm.roomflow.domain.BaseEntity;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 
@@ -12,7 +10,7 @@ import java.math.BigDecimal;
 @Getter
 @Table(name = "meeting_rooms")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class MeetingRoom {
+public class MeetingRoom extends BaseEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,7 +28,8 @@ public class MeetingRoom {
 	@Column(nullable = false, precision = 10, scale = 0)
 	private BigDecimal hourlyPrice;
 
-	@Enumerated(EnumType.STRING)
+	@Setter
+    @Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private RoomStatus status = RoomStatus.AVAILABLE;
 
@@ -40,32 +39,57 @@ public class MeetingRoom {
 	@Column(length = 1000)
 	private String imageUrl;
 
-	// 빌더 패턴을 사용하여 객체 생성 시점에 필수 값 검증 가능
 	@Builder
 	public MeetingRoom(String roomName, int capacity, String description,
 					   BigDecimal hourlyPrice, RoomStatus status, String imageUrl) {
+
 		this.roomName = roomName;
 		this.capacity = capacity;
 		this.description = description;
 		this.hourlyPrice = (hourlyPrice != null) ? hourlyPrice : BigDecimal.ZERO;
 		this.status = (status != null) ? status : RoomStatus.AVAILABLE;
 		this.imageUrl = imageUrl;
-		this.totalReservations = 0; // 초기값 강제
+		this.totalReservations = 0;
 	}
 
-	// --- 비즈니스 로직 (Setter 대신 도메인 메서드 사용) ---
+	// 회의실 정보 수정
 	public void updateRoomInfo(String roomName, int capacity, String description) {
+		validateRoomName(roomName);
+		validateCapacity(capacity);
+		validateHourlyPrice(hourlyPrice);
+
 		this.roomName = roomName;
 		this.capacity = capacity;
 		this.description = description;
 	}
 
-	public void changeStatus(RoomStatus status) {
+	public void updateStatus(RoomStatus status) {
+		if (status == null) {
+			throw new IllegalArgumentException("회의실 상태는 필수입니다.");
+		}
 		this.status = status;
 	}
 
 	public void incrementReservations() {
 		this.totalReservations++;
+	}
+
+	private void validateRoomName(String roomName) {
+		if (roomName == null || roomName.isBlank()) {
+			throw new IllegalArgumentException("회의실 이름은 필수입니다.");
+		}
+	}
+
+	private void validateCapacity(int capacity) {
+		if (capacity < 1) {
+			throw new IllegalArgumentException("회의실 정원은 1 이상이어야 합니다.");
+		}
+	}
+
+	private void validateHourlyPrice(BigDecimal hourlyPrice) {
+		if (hourlyPrice != null && hourlyPrice.compareTo(BigDecimal.ZERO) < 0) {
+			throw new IllegalArgumentException("회의실 요금은 0 이상이어야 합니다.");
+		}
 	}
 
 }

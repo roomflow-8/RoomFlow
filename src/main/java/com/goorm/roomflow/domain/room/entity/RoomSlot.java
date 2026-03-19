@@ -1,6 +1,7 @@
 package com.goorm.roomflow.domain.room.entity;
 
 
+import com.goorm.roomflow.domain.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -25,7 +26,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class) // 자동 날짜 매핑을 위해 필수
-public class RoomSlot {
+public class RoomSlot extends BaseEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,21 +45,13 @@ public class RoomSlot {
 	@Column(nullable = false)
 	private boolean isActive = true;
 
-	// --- 시간 관련 필드 직접 삽입 ---
-	@CreatedDate
-	@Column(updatable = false, nullable = false)
-	private LocalDateTime createdAt;
-
-	@LastModifiedDate
-	@Column(nullable = false)
-	private LocalDateTime updatedAt;
-
 	@Builder
 	public RoomSlot(MeetingRoom meetingRoom, LocalDateTime slotStartAt, LocalDateTime slotEndAt, boolean isActive) {
-		// 시간 선후 관계 검증 (SQL의 CHECK 제약조건 로직)
-		if (slotStartAt != null && slotEndAt != null && !slotStartAt.isBefore(slotEndAt)) {
-			throw new IllegalArgumentException("시작 시간은 종료 시간보다 빨라야 합니다.");
+		if (meetingRoom == null) {
+			throw new IllegalArgumentException("회의실은 필수입니다.");
 		}
+
+		validateTime(slotStartAt, slotEndAt);
 
 		this.meetingRoom = meetingRoom;
 		this.slotStartAt = slotStartAt;
@@ -66,8 +59,19 @@ public class RoomSlot {
 		this.isActive = isActive;
 	}
 
-	// 비즈니스 로직
 	public void updateActiveStatus(boolean isActive) {
 		this.isActive = isActive;
 	}
+
+	static void validateTime(LocalDateTime slotStartAt, LocalDateTime slotEndAt) {
+		if (slotStartAt == null || slotEndAt == null) {
+			throw new IllegalArgumentException("시간은 필수입니다.");
+		}
+
+		if (!slotStartAt.isBefore(slotEndAt)) {
+			throw new IllegalArgumentException("시작 시간은 종료 시간보다 빨라야 합니다.");
+		}
+	}
+
+
 }
