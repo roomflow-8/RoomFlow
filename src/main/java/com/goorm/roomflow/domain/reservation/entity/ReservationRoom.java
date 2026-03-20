@@ -1,5 +1,6 @@
 package com.goorm.roomflow.domain.reservation.entity;
 
+import com.goorm.roomflow.domain.BaseEntity;
 import com.goorm.roomflow.domain.room.entity.MeetingRoom;
 import com.goorm.roomflow.domain.room.entity.RoomSlot;
 import jakarta.persistence.*;
@@ -43,10 +44,6 @@ public class ReservationRoom {
 
 	@Column(nullable = false, precision = 10, scale = 0)
 	private BigDecimal amount = BigDecimal.ZERO;
-
-	@CreatedDate
-	@Column(updatable = false, nullable = false)
-	private LocalDateTime createdAt;
 
 	@Builder
 	public ReservationRoom(Reservation reservation, MeetingRoom meetingRoom, RoomSlot roomSlot, BigDecimal amount) {

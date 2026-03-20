@@ -1,12 +1,10 @@
 package com.goorm.roomflow.domain.reservation.entity;
 
+import com.goorm.roomflow.domain.BaseEntity;
 import com.goorm.roomflow.domain.room.entity.MeetingRoom;
 import com.goorm.roomflow.domain.user.entity.User;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -23,8 +21,9 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class Reservation {
+public class Reservation extends BaseEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,14 +53,7 @@ public class Reservation {
 	private LocalDateTime cancelledAt;
 	private String cancelReason;
 
-	@CreatedDate
-	@Column(updatable = false, nullable = false)
-	private LocalDateTime createdAt;
-
-	@LastModifiedDate
-	@Column(nullable = false)
-	private LocalDateTime updatedAt;
-
+	//TODO: startAt, endAt 삭제
 	@Builder
 	public Reservation(User user, MeetingRoom meetingRoom, String idempotencyKey,
 					   BigDecimal totalAmount, LocalDateTime startAt, LocalDateTime endAt, String memo) {
@@ -77,6 +69,13 @@ public class Reservation {
 		this.totalAmount = (totalAmount != null) ? totalAmount : BigDecimal.ZERO;
 		this.memo = memo;
 		this.status = ReservationStatus.PENDING;
+	}
+
+	/*
+	260319 ES getReservationInfoTest 로 추가
+	 */
+	public Reservation(ReservationStatus reservationStatus, MeetingRoom room) {
+		super();
 	}
 
 	// --- 비즈니스 로직 ---

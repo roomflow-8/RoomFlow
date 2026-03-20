@@ -29,7 +29,7 @@ public class MeetingRoom extends BaseEntity {
 	private BigDecimal hourlyPrice;
 
 	@Setter
-    @Enumerated(EnumType.STRING)
+	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
 	private RoomStatus status = RoomStatus.AVAILABLE;
 
