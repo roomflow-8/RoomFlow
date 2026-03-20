@@ -48,4 +48,17 @@ public class User extends BaseEntity {
 		this.role = role;
 		this.deletedAt = deletedAt;
 	}
+
+	public void delete() {
+		this.deletedAt = LocalDateTime.now();
+	}
+
+	public boolean isDeleted() {
+		return this.deletedAt != null;
+	}
+
+	public void updatePassword(String encodedPassword) {
+		this.password = encodedPassword;
+	}
+
 }
