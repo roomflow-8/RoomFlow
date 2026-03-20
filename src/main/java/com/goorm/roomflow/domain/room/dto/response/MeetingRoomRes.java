@@ -3,7 +3,9 @@ package com.goorm.roomflow.domain.room.dto.response;
 import com.goorm.roomflow.domain.room.entity.RoomStatus;
 
 import java.math.BigDecimal;
+import java.text.NumberFormat;
 import java.util.List;
+import java.util.Locale;
 
 public record MeetingRoomRes(
         Long roomId,
@@ -18,6 +20,7 @@ public record MeetingRoomRes(
         List<RoomSlotRes> roomSlots
 ) {
     public String priceText() {
-        return String.format("%,d/시간", hourlyPrice.intValue());
+        NumberFormat format = NumberFormat.getNumberInstance(Locale.KOREA);
+        return format.format(hourlyPrice) + "원";
     }
 }

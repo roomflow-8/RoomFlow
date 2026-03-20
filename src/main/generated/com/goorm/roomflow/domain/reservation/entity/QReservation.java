@@ -46,7 +46,7 @@ public class QReservation extends EntityPathBase<Reservation> {
     //inherited
     public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
 
-    public final com.goorm.roomflow.domain.user.entity.QUser user;
+    public final NumberPath<Long> userId = createNumber("userId", Long.class);
 
     public QReservation(String variable) {
         this(Reservation.class, forVariable(variable), INITS);
@@ -67,7 +67,6 @@ public class QReservation extends EntityPathBase<Reservation> {
     public QReservation(Class<? extends Reservation> type, PathMetadata metadata, PathInits inits) {
         super(type, metadata, inits);
         this.meetingRoom = inits.isInitialized("meetingRoom") ? new com.goorm.roomflow.domain.room.entity.QMeetingRoom(forProperty("meetingRoom")) : null;
-        this.user = inits.isInitialized("user") ? new com.goorm.roomflow.domain.user.entity.QUser(forProperty("user")) : null;
     }
 
 }

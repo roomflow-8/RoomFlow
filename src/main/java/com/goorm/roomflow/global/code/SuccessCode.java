@@ -17,6 +17,9 @@ public enum SuccessCode {
     SIGNUP_SUCCESS(HttpStatus.CREATED, "AUTH_002", "회원가입이 완료되었습니다."),
     LOGOUT_SUCCESS(HttpStatus.OK, "AUTH_003", "로그아웃되었습니다."),
 
+    // 회의실 조회
+    ROOM_SUCCESS(HttpStatus.OK, "ROOM_001", "회의실 조회 성공"),
+
     // 예약
     RESERVATION_SUCCESS(HttpStatus.OK, "RESERVATION_001", "예약 조회 성공"),
     RESERVATION_CREATED(HttpStatus.CREATED, "RESERVATION_002", "예약 생성 성공"),

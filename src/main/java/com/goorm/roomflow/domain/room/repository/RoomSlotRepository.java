@@ -8,4 +8,6 @@ import java.util.List;
 public interface RoomSlotRepository extends JpaRepository<RoomSlot, Long> {
     List<RoomSlot> findBySlotStartAtGreaterThanEqualAndSlotStartAtLessThanOrderBySlotStartAtAsc(
             LocalDateTime startAt, LocalDateTime endAt);
+
+    List<RoomSlot> findByMeetingRoom_RoomIdAndRoomSlotIdIn(Long roomId, List<Long> roomSlotIds);
 }
