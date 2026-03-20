@@ -38,3 +38,15 @@ function toggleRoom(button) {
         button.innerText = "시간 선택 ▼";
     }
 }
+
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".reservation-form").forEach(form => {
+        form.addEventListener("submit", function (e) {
+            const checked = form.querySelectorAll('input[name="roomSlotIds"]:checked');
+            if (checked.length === 0) {
+                alert("예약 시간을 선택해주세요.");
+                e.preventDefault();
+            }
+        });
+    });
+});

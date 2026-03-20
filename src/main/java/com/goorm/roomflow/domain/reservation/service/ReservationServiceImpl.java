@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -58,12 +59,14 @@ public class ReservationServiceImpl implements ReservationService {
                 .sorted(Comparator.comparing(RoomSlot::getSlotStartAt))
                 .toList();
 
+        LocalDate reservationDate = roomSlots.getFirst().getSlotStartAt().toLocalDate();
         List<ReservationTimeSlot> reservationTimeSlots = makeReservationTimeSlot(roomSlots);
 
         return reservationRoomMapper.toReservationRoomRes(
                 reservation,
                 meetingRoom,
-                reservationTimeSlots
+                reservationTimeSlots,
+                reservationDate
         );
     }
 
@@ -87,6 +90,7 @@ public class ReservationServiceImpl implements ReservationService {
         // 3. 슬롯 조회
         List<RoomSlot> roomSlots = roomSlotRepository.findByMeetingRoom_RoomIdAndRoomSlotIdIn(
                 request.roomId(), request.roomSlotIds());
+        LocalDate reservationDate = roomSlots.getFirst().getSlotStartAt().toLocalDate();
 
         // 3-1. 슬롯 예외 처리
         if(roomSlots.size() != request.roomSlotIds().size()) {
@@ -134,7 +138,8 @@ public class ReservationServiceImpl implements ReservationService {
         return reservationRoomMapper.toReservationRoomRes(
                 reservation,
                 meetingRoom,
-                reservationTimeSlots
+                reservationTimeSlots,
+                reservationDate
         );
 
     }
