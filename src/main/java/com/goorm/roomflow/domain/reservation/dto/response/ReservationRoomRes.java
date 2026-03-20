@@ -4,6 +4,7 @@ import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 
@@ -12,6 +13,7 @@ public record ReservationRoomRes (
         Long reservationId,
         Long roomId,
         String roomName,
+        LocalDate reservationDate,
         int capacity,
         List<ReservationTimeSlot> reservationTimeSlots,
         BigDecimal totalAmount

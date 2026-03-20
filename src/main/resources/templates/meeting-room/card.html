@@ -57,17 +57,18 @@
         </button>
 
         <div class="room-detail hidden mt-3" th:if="${room.status.name() == 'AVAILABLE'}">
-            <form method="post" th:action="@{/reservations}">
+            <form method="post" th:action="@{/reservations}" class="reservation-form">
                 <input type="hidden" name="roomId" th:value="${room.roomId}">
                 <input type="hidden" name="date" th:value="${selectedDate}">
+                <input type="hidden" name="idempotencyKey" th:value="${T(java.util.UUID).randomUUID().toString()}">
 
                 <div class="mb-3">
                     <div th:if="${room.roomSlots != null and !#lists.isEmpty(room.roomSlots)}"
                          class="flex flex-wrap gap-2">
                         <label th:each="time : ${room.roomSlots}">
                             <input type="checkbox"
-                                   name="times"
-                                   th:value="${time.timeRange()}"
+                                   name="roomSlotIds"
+                                   th:value="${time.roomSlotId()}"
                                    class="hidden peer"
                                    th:disabled="${!time.isActive}" />
 

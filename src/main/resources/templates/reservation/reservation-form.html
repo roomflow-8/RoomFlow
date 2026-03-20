@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-[#fafafa]">
+
+<div th:replace="~{fragments/header :: header}"></div>
+
+<main class="max-w-5xl mx-auto px-8 py-12">
+    <a th:href="@{/}"
+       class="inline-flex items-center gap-2 mb-6 text-gray-600 hover:text-black transition-colors">
+        <span>←</span>
+        <span class="text-[16px]">이전 단계로</span>
+    </a>
+
+    <h1 class="text-3xl font-bold mb-8">예약 확인</h1>
+
+    <form th:action="@{/reservations/confirm}" method="post">
+        <input type="hidden" name="reservationId" th:value="${reservationRoom.reservationId}">
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Left -->
+            <div class="lg:col-span-2 space-y-6">
+
+                <!-- 회의실 정보 -->
+                <div class="bg-white rounded-xl shadow-sm border">
+                    <div class="px-6 py-4 border-b">
+                        <div class="flex items-center gap-2">
+                            <span class="text-blue-600">🏢</span>
+                            <h2 class="text-xl font-semibold">회의실 예약 정보</h2>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-6">
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm text-gray-600">회의실</p>
+                                    <p class="font-semibold text-lg"
+                                       th:text="${reservationRoom.roomName}">
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-600">날짜</p>
+                                    <p class="font-semibold"
+                                       th:text="${reservationRoom.reservationDate}">
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-600 mb-2">시간</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span th:each="timeSlot : ${reservationRoom.reservationTimeSlots}"
+                                              th:text="${timeSlot.timeRange()}"
+                                              class="px-3 py-1 text-sm rounded-md bg-gray-100 text-gray-700">
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-600">인원</p>
+                                    <p class="font-semibold">
+                                        <span th:text="${reservationRoom.capacity}">8</span>명
+                                    </p>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-600">회의실 이용료</span>
+                                <span class="font-bold text-lg"
+                                      th:text="${reservationRoom.priceText()}">
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 이용 목적 -->
+                <div class="bg-white rounded-xl shadow-sm border">
+                    <div class="px-6 py-4 border-b">
+                        <div class="flex items-center gap-2">
+                            <span class="text-orange-600">📝</span>
+                            <h2 class="text-xl font-semibold">이용 목적</h2>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-6">
+                        <textarea
+                                name="purpose"
+                                maxlength="200"
+                                placeholder="회의실 이용 목적을 입력해주세요"
+                                class="w-full h-24 resize-none border border-gray-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                        <p class="text-xs text-gray-400 mt-1">
+                            최대 200자까지 입력 가능합니다.
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-sm border sticky top-8">
+                    <div class="px-6 py-4 border-b">
+                        <h2 class="text-xl font-semibold">예약 요약</h2>
+                    </div>
+
+                    <div class="px-6 py-6">
+                        <div class="space-y-4">
+                            <div class="space-y-2">
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-600">회의실 이용료</span>
+                                    <span th:text="${reservationRoom.priceText()}">
+                                    </span>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-lg">총 금액</span>
+                                <span class="font-bold text-2xl text-blue-600"
+                                      th:text="${reservationRoom.priceText()}">
+                                    10,000원
+                                </span>
+                            </div>
+
+                            <div class="space-y-2">
+                                <a th:href="@{/equipment-list(reservationId=${reservationRoom.reservationId})}"
+                                   class="w-full h-12 text-base border rounded-md flex items-center justify-center hover:bg-gray-50">
+                                    비품 추가하기
+                                </a>
+
+                                <button type="submit"
+                                        class="w-full h-12 text-lg bg-black text-white rounded-md hover:bg-gray-800">
+                                    예약 확정하기
+                                </button>
+                            </div>
+
+                            <div class="text-xs text-gray-500 space-y-1 pt-4">
+                                <p>• 예약 확정 후 회의실 예약이 완료됩니다.</p>
+                                <p>• 비품은 언제든지 추가 가능합니다.</p>
+                                <p>• 취소 및 환불 규정은 예약 정책을 확인하세요.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </form>
+</main>
+
+</body>
+</html>

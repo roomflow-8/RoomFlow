@@ -4,6 +4,7 @@ import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationTimeSlot;
 import com.goorm.roomflow.domain.reservation.entity.Reservation;
 import com.goorm.roomflow.domain.room.entity.MeetingRoom;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.processing.Generated;
@@ -11,15 +12,15 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-03-20T15:20:43+0900",
+    date = "2026-03-20T18:54:04+0900",
     comments = "version: 1.6.3, compiler: IncrementalProcessingEnvironment from gradle-language-java-8.14.4.jar, environment: Java 21.0.10 (Azul Systems, Inc.)"
 )
 @Component
 public class ReservationRoomMapperImpl implements ReservationRoomMapper {
 
     @Override
-    public ReservationRoomRes toReservationRoomRes(Reservation reservation, MeetingRoom meetingRoom, List<ReservationTimeSlot> reservationTimeSlots) {
-        if ( reservation == null && meetingRoom == null && reservationTimeSlots == null ) {
+    public ReservationRoomRes toReservationRoomRes(Reservation reservation, MeetingRoom meetingRoom, List<ReservationTimeSlot> reservationTimeSlots, LocalDate reservationDate) {
+        if ( reservation == null && meetingRoom == null && reservationTimeSlots == null && reservationDate == null ) {
             return null;
         }
 
@@ -38,6 +39,7 @@ public class ReservationRoomMapperImpl implements ReservationRoomMapper {
         if ( list != null ) {
             reservationRoomRes.reservationTimeSlots( new ArrayList<ReservationTimeSlot>( list ) );
         }
+        reservationRoomRes.reservationDate( reservationDate );
 
         return reservationRoomRes.build();
     }
