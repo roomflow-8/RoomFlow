@@ -29,9 +29,11 @@ public class Reservation extends BaseEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long reservationId;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id", nullable = false)
-	private User user;
+//	@ManyToOne(fetch = FetchType.LAZY)
+//	@JoinColumn(name = "user_id", nullable = false)
+//	private User user;
+	@Column(name = "user_id", nullable = false)
+	private Long userId;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "room_id", nullable = false)
@@ -55,19 +57,17 @@ public class Reservation extends BaseEntity {
 
 	//TODO: startAt, endAt 삭제
 	@Builder
-	public Reservation(User user, MeetingRoom meetingRoom, String idempotencyKey,
-					   BigDecimal totalAmount, LocalDateTime startAt, LocalDateTime endAt, String memo) {
+	public Reservation(
+//			User user,
+					   Long userId,
+					   MeetingRoom meetingRoom, String idempotencyKey,
+					   BigDecimal totalAmount) {
 
-		// 시간 선후 관계 검증 (CHECK 제약조건)
-		if (startAt != null && endAt != null && !startAt.isBefore(endAt)) {
-			throw new IllegalArgumentException("시작 시간은 종료 시간보다 빨라야 합니다.");
-		}
-
-		this.user = user;
+//		this.user = user;
+		this.userId = userId;
 		this.meetingRoom = meetingRoom;
 		this.idempotencyKey = idempotencyKey;
 		this.totalAmount = (totalAmount != null) ? totalAmount : BigDecimal.ZERO;
-		this.memo = memo;
 		this.status = ReservationStatus.PENDING;
 	}
 

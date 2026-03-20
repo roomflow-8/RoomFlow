@@ -27,7 +27,7 @@ public class MeetingRoomRestController {
         MeetingRoomListRes meetingRoomListRes = meetingRoomService.getMeetingRoomsByDate(date);
 
         return ApiResponse.success(
-                SuccessCode.RESERVATION_SUCCESS,
+                SuccessCode.ROOM_SUCCESS,
                 meetingRoomListRes
         );
     }
