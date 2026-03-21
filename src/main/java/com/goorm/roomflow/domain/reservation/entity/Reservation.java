@@ -3,6 +3,8 @@ package com.goorm.roomflow.domain.reservation.entity;
 import com.goorm.roomflow.domain.BaseEntity;
 import com.goorm.roomflow.domain.room.entity.MeetingRoom;
 import com.goorm.roomflow.domain.user.entity.User;
+import com.goorm.roomflow.global.code.ErrorCode;
+import com.goorm.roomflow.global.exception.BusinessException;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -55,7 +57,6 @@ public class Reservation extends BaseEntity {
 	private LocalDateTime cancelledAt;
 	private String cancelReason;
 
-	//TODO: startAt, endAt 삭제
 	@Builder
 	public Reservation(
 //			User user,
@@ -78,9 +79,23 @@ public class Reservation extends BaseEntity {
 		super();
 	}
 
-	// --- 비즈니스 로직 ---
-	public void confirm() {
+	public void confirm(String memo) {
+
+		if (this.status != ReservationStatus.PENDING) {
+
+			if (this.status == ReservationStatus.CONFIRMED) {
+				throw new BusinessException(ErrorCode.RESERVATION_ALREADY_CONFIRMED);
+			}
+
+			if (this.status == ReservationStatus.EXPIRED) {
+				throw new BusinessException(ErrorCode.RESERVATION_EXPIRED);
+			}
+
+			throw new BusinessException(ErrorCode.RESERVATION_NOT_PENDING);
+		}
+
 		this.status = ReservationStatus.CONFIRMED;
+		this.memo = memo;
 	}
 
 	public void cancel(String reason) {

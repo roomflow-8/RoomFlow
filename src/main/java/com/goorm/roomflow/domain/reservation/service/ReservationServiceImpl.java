@@ -1,10 +1,12 @@
 package com.goorm.roomflow.domain.reservation.service;
 
+import com.goorm.roomflow.domain.reservation.dto.request.ConfirmReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomReq;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationTimeSlot;
 import com.goorm.roomflow.domain.reservation.entity.Reservation;
 import com.goorm.roomflow.domain.reservation.entity.ReservationRoom;
+import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
 import com.goorm.roomflow.domain.reservation.mapper.ReservationRoomMapper;
 import com.goorm.roomflow.domain.reservation.repository.ReservationRepository;
 import com.goorm.roomflow.domain.reservation.repository.ReservationRoomRepository;
@@ -36,6 +38,15 @@ public class ReservationServiceImpl implements ReservationService {
     private final ReservationRoomRepository reservationRoomRepository;
     private final ReservationRoomMapper reservationRoomMapper;
 
+    /**
+     * 회의실 예약 정보를 조회한다.
+     * - reservationId를 기준으로 Reservation을 조회한 후,
+     * - 해당 예약에 연결된 ReservationRoom 및 RoomSlot 정보를 함께 조회하여 반환한다.
+     *
+     * @param reservationId 조회할 예약 ID
+     * @return 예약된 회의실 및 시간 슬롯 정보
+     * @throws BusinessException 예약을 찾을 수 없는 경우 발생
+     */
     @Override
     @Transactional(readOnly = true)
     public ReservationRoomRes readReservationRoom(Long reservationId) {
@@ -70,6 +81,20 @@ public class ReservationServiceImpl implements ReservationService {
         );
     }
 
+    /**
+     * 회의실 예약을 생성한다.
+     * - 회의실과 슬롯의 유효성을 확인한 뒤 예약을 생성하고, 선택한 슬롯을 예약 불가능 상태로 변경한다.
+     * 1. 회의실 존재 여부 확인
+     * 2. 멱등키 중복 여부 확인
+     * 3. 선택한 슬롯 존재 여부 및 예약 가능 여부 확인
+     * 4. 총 예약 금액 계산
+     * 5. Reservation 및 ReservationRoom 생성
+     * 6. 슬롯 비활성화 처리
+     *
+     * @param request 회의실 예약 생성 요청 정보
+     * @return 생성된 예약 정보 및 시간 슬롯 정보
+     * @throws BusinessException 회의실 또는 슬롯이 존재하지 않거나 이미 예약된 경우 발생
+     */
     @Override
     @Transactional
     public ReservationRoomRes createReservationRoom(CreateReservationRoomReq request) {
@@ -141,10 +166,40 @@ public class ReservationServiceImpl implements ReservationService {
                 reservationTimeSlots,
                 reservationDate
         );
-
     }
 
-    // 슬롯 시간별 정리 함수
+    /**
+     * 회의실 예약 및 비품 예약을 확정한다.
+     * - reservationId를 기준으로 Reservation을 조회한 후, 예약과 비품 예약을 Confirmed 상태로 변경한다.
+     *
+     * @param reservationId 조회할 예약 ID, request 비품 예약 목록 및 예약 목적
+     */
+    @Override
+    @Transactional
+    public void confirmReservation(Long reservationId, ConfirmReservationReq request) {
+
+        // 회의실 예약 조회
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+
+        // 회의실 예약 확정
+        reservation.confirm(request.memo());
+
+        // TODO: 비품 예약이 있으면 함께 확정
+        if (request.reservationEquipmentIds() != null && !request.reservationEquipmentIds().isEmpty()) {
+            confirmEquipment();
+        }
+    }
+
+    /* TODO: 1. 비품만 예약 확정하는 서비스 메서드*/
+    public void confirmEquipmentService() {
+        confirmEquipment();
+    }
+
+    /* TODO: 2. 비품 예약 private 메서드 */
+    private void confirmEquipment(){}
+
+    // 연속된 RoomSlot을 하나의 예약 시간 구간으로 병합한다.
     private List<ReservationTimeSlot> makeReservationTimeSlot(List<RoomSlot> roomSlots) {
         List<RoomSlot> sortedSlots = roomSlots.stream()
                 .sorted(Comparator.comparing(RoomSlot::getSlotStartAt))
@@ -174,8 +229,8 @@ public class ReservationServiceImpl implements ReservationService {
         return reservationTimeSlots;
     }
 
-    // 총 금액 계산
-    private BigDecimal calcTotalAmount(BigDecimal houlyPrice, List<RoomSlot> roomSlots) {
-        return houlyPrice.multiply(BigDecimal.valueOf(roomSlots.size()));
+    // 회의실 시간당 요금과 예약 슬롯 수를 기준으로 총 예약 금액을 계산한다.
+    private BigDecimal calcTotalAmount(BigDecimal hourlyPrice, List<RoomSlot> roomSlots) {
+        return hourlyPrice.multiply(BigDecimal.valueOf(roomSlots.size()));
     }
 }
