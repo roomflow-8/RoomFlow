@@ -11,9 +11,9 @@ public class SwaggerConfig {
 	//swagger info정하기
 	private Info info() {
 		return new Info()
-				.title("API Test")
+				.title("RoomFlow API")
 				.version("1.0.0")
-				.description("Practice Swagger UI");
+				.description("Roomflow");
 	}
 
 	@Bean

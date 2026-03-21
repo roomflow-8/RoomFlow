@@ -60,15 +60,9 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 						meetingRoom.roomName)
 				.fetchOne();
 
-		//TODO: Error처리 ErrorResponse확인
 		if (reservationInfo == null) {
 			throw new IllegalArgumentException("Invalid reservation or not in PENDING status");
 		}
-
-		log.info("________");
-		log.info("Reservation Id: " + reservationId);
-		log.info("Room Id: " + meetingRoom.roomId);
-		log.info("reservationInfo: " + reservationInfo);
 
 		return reservationInfo;
 	}
@@ -82,7 +76,6 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 		QRoomSlot roomSlot = QRoomSlot.roomSlot;
 
 		LocalDate date = reservationInfo.startAt().toLocalDate();
-		log.info("________");
 		return jpaQueryFactory
 				.select(new QEquipmentAvailabilityDto(
 						equipment.equipmentId,

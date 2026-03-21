@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <link rel="stylesheet" type="text/css" th:href="@{/css/equip-list.css}">
+    <script th:src="@{/js/equip-list.js}"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<div th:replace="~{fragments/header :: header}"></div>
+<div class="flex min-h-screen">
+    <!-- Main Content -->
+    <div class="flex-1">
+        <div id="equip-data" th:data-res-id="${reservationId}"></div>
+
+        <main class="max-w-7xl mx-auto px-4 py-8">
+            <!-- Back Button -->
+            <button onclick="history.back()" class="flex items-center gap-2 mb-6 text-gray-600 hover:text-black transition-colors">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                <span>이전 단계로</span>
+            </button>
+
+            <div class="flex items-center justify-between mb-2">
+                <h1 class="text-3xl font-bold">비품 선택</h1>
+                <div id="equipment-count" class="px-3 py-1 border border-gray-300 rounded-md text-sm">
+                    <span class="loading-skeleton inline-block w-20 h-5 rounded"></span>
+                </div>
+            </div>
+            <p class="text-gray-600 mb-8">필요한 비품을 선택하고 수량을 지정하세요</p>
+
+            <!-- 로딩 상태 -->
+            <div id="loading" class="flex items-center justify-center py-20">
+                <div class="text-center">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p class="text-gray-600">비품 목록을 불러오는 중...</p>
+                    <p class="text-sm text-gray-500 mt-2">잠시만 기다려주세요</p>
+                </div>
+            </div>
+
+            <!-- 에러 상태 -->
+            <div id="error" class="hidden">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                    <div class="text-red-600 mb-4">
+                        <i data-lucide="alert-circle" class="w-12 h-12 mx-auto"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-red-900 mb-2">오류 발생</h2>
+                    <p id="error-message" class="text-red-700 mb-4">비품 목록을 불러오는데 실패했습니다.</p>
+                    <button onclick="loadEquipments()" class="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-semibold">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 inline mr-2"></i>
+                        다시 시도
+                    </button>
+                </div>
+            </div>
+
+            <!-- 비품 목록 -->
+            <div id="equipment-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden">
+                <!-- 동적으로 생성됩니다 -->
+            </div>
+
+            <!-- 비품 없음 -->
+            <div id="no-equipment" class="hidden">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-12 text-center">
+                    <div class="text-yellow-600 mb-4">
+                        <i data-lucide="package-x" class="w-16 h-16 mx-auto"></i>
+                    </div>
+                    <p class="text-xl font-bold text-yellow-900 mb-2">사용 가능한 비품이 없습니다</p>
+                    <p class="text-yellow-700">다른 시간대를 선택해주세요</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 오른쪽 사이드바 - 비품 신청 현황 -->
+    <div class="w-96 bg-white border-l border-gray-200 p-6 overflow-y-auto sticky top-0 h-screen">
+        <div class="flex items-center gap-2 mb-6">
+            <i data-lucide="shopping-cart" class="w-6 h-6 text-gray-700"></i>
+            <h2 class="text-xl font-bold">비품 신청 현황</h2>
+        </div>
+
+        <div id="cart-empty" class="text-center py-12 text-gray-500">
+            <i data-lucide="shopping-cart" class="w-12 h-12 mx-auto mb-4 text-gray-300"></i>
+            <p class="font-semibold">선택한 비품이 없습니다</p>
+            <p class="text-sm mt-2">비품을 선택해주세요</p>
+        </div>
+
+        <div id="cart-items" class="space-y-4 hidden">
+            <!-- 선택된 비품 목록 -->
+        </div>
+
+        <!-- 합계 -->
+        <div id="cart-summary" class="mt-4 hidden">
+            <div class="bg-gray-50 border-2 border-gray-300 rounded-lg p-4">
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">총 비품 수:</span>
+                        <span class="font-semibold"><span id="total-quantity">0</span>개</span>
+                    </div>
+                    <div class="flex justify-between pt-2 border-t border-gray-300">
+                        <span class="font-bold">총 대여료:</span>
+                        <span class="font-bold text-xl text-blue-600">
+                                <span id="total-fee">0</span>원
+                            </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 신청 버튼 -->
+            <button onclick="submitEquipments()"
+                    class="w-full h-12 mt-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold transition-colors">
+                <i data-lucide="check" class="w-5 h-5 inline mr-2"></i>
+                비품 신청 완료
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="detail-dialog" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="p-6 border-b border-gray-100">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">비품 상세 정보</h2>
+                    <p class="text-sm text-gray-500 mt-1">선택한 비품의 상세 정보를 확인할 수 있습니다.</p>
+                </div>
+                <button onclick="closeDetail()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <div class="flex items-center gap-4">
+                <div class="p-4 bg-blue-100 rounded-lg">
+                    <img id="modal-image" src="" alt="비품 이미지" class="w-20 h-20 object-cover hidden">
+                    <i id="modal-icon" data-lucide="package" class="w-10 h-10 text-blue-600"></i>
+                </div>
+                <div>
+                    <h3 id="modal-name" class="text-xl font-bold text-gray-900">비품 이름</h3>
+                    <div id="modal-status-badge" class="mt-1"></div>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="font-semibold mb-2 text-gray-700">설명</h4>
+                <p id="modal-description" class="text-gray-600 leading-relaxed text-sm">
+                    비품에 대한 상세 설명이 표시됩니다.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 border-t pt-4 text-sm text-gray-500">
+                <div>재고: <span id="modal-stock" class="font-medium text-gray-900">0/0</span></div>
+                <div class="text-right">대여료: <span id="modal-price" class="font-bold text-blue-600">0원</span></div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button onclick="closeDetail()"
+                        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
