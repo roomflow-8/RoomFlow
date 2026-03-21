@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<head>
+    <meta charset="UTF-8">
+    <title>RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
+</head>
+<body class="min-h-screen bg-[#fafafa]">
+<th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
+<div th:replace="~{fragments/header :: header}"></div>
+
+<main class="max-w-5xl mx-auto px-8 py-12">
+    <a th:href="@{/}"
+       class="inline-flex items-center gap-2 mb-6 text-gray-600 hover:text-black transition-colors">
+        <span>←</span>
+        <span class="text-[16px]">이전 단계로</span>
+    </a>
+
+    <h1 class="text-3xl font-bold mb-8">예약 확인</h1>
+
+    <form th:action="@{/reservations/{reservationId}/confirm(reservationId=${reservationRoom.reservationId})}" method="post">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <div class="lg:col-span-2 space-y-6">
+                <div th:replace="~{reservation/fragments/room-info :: roomInfo(${reservationRoom})}"></div>
+                <div th:replace="~{reservation/fragments/purpose :: purpose}"></div>
+            </div>
+
+            <div class="lg:col-span-1">
+                <div th:replace="~{reservation/fragments/summary :: summary(${reservationRoom})}"></div>
+            </div>
+
+        </div>
+    </form>
+</main>
+
+</body>
+</html>
