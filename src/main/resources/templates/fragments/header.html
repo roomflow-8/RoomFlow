@@ -18,7 +18,7 @@
             <nav class="flex items-center gap-4">
                 <!-- 활성 메뉴 -->
                 <a th:href="@{/rooms}"
-                   class="px-3 py-2 text-sm font-medium rounded-md bg-gray-100 text-black">
+                   class="px-3 py-2 text-sm font-medium rounded-md text-black hover:bg-gray-100">
                     회의실 조회
                 </a>
             </nav>
@@ -27,8 +27,6 @@
 
         <!-- 메뉴 -->
         <div class="flex items-center gap-3">
-
-
 
             <!-- 로그인 여부 -->
             <th:block th:if="${session.loginUser != null}">
