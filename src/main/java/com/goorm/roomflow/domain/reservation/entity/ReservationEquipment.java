@@ -40,17 +40,17 @@ public class ReservationEquipment {
 	private Equipment equipment;
 
 	@Column(nullable = false)
-	private int quantity = 1;
+	private int quantity;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
-	private ReservationStatus status = ReservationStatus.PENDING;
+	private ReservationStatus status;
 
 	@Column(nullable = false, precision = 10, scale = 0)
-	private BigDecimal unitPrice = BigDecimal.ZERO;
+	private BigDecimal unitPrice;
 
 	@Column(nullable = false, precision = 10, scale = 0)
-	private BigDecimal totalAmount = BigDecimal.ZERO;
+	private BigDecimal totalAmount;
 
 	private LocalDateTime cancelledAt;
 
@@ -61,8 +61,8 @@ public class ReservationEquipment {
 	private LocalDateTime createdAt;
 
 	@Builder
-	public ReservationEquipment(Reservation reservation, Equipment equipment, int quantity,
-								BigDecimal unitPrice, ReservationStatus status) {
+	public ReservationEquipment(Reservation reservation, Equipment equipment, int quantity, ReservationStatus status,
+								BigDecimal unitPrice, BigDecimal totalAmount) {
 		// 수량 검증 (CHECK 제약조건)
 		if (quantity <= 0) {
 			throw new IllegalArgumentException("수량은 1개 이상이어야 합니다.");
@@ -71,9 +71,9 @@ public class ReservationEquipment {
 		this.reservation = reservation;
 		this.equipment = equipment;
 		this.quantity = quantity;
-		this.unitPrice = (unitPrice != null) ? unitPrice : BigDecimal.ZERO;
-		this.totalAmount = this.unitPrice.multiply(BigDecimal.valueOf(quantity));
 		this.status = (status != null) ? status : ReservationStatus.PENDING;
+		this.unitPrice = (unitPrice != null) ? unitPrice : BigDecimal.ZERO;
+		this.totalAmount = this.unitPrice.multiply(BigDecimal.valueOf(quantity)); //  ||    this.totalAmount = totalAmount;
 	}
 
 	// --- 비즈니스 로직 ---
@@ -82,4 +82,16 @@ public class ReservationEquipment {
 		this.cancelledAt = LocalDateTime.now();
 		this.cancelReason = reason;
 	}
+
+	public void confirm() {
+		if (this.status != ReservationStatus.PENDING) {
+			throw new IllegalStateException("PENDING 상태만 확정할 수 있습니다.");
+		}
+		this.status = ReservationStatus.CONFIRMED;
+	}
+
+	public void expire() {
+		this.status = ReservationStatus.EXPIRED;
+	}
+
 }

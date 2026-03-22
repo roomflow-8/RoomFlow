@@ -32,6 +32,7 @@ public enum ErrorCode {
 	// 비품
 	EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EQUIPMENT_001", "비품이 존재하지 않습니다."),
 	EQUIPMENT_OUT_OF_STOCK(HttpStatus.CONFLICT, "EQUIPMENT_002", "비품 재고가 부족합니다."),
+	EQUIPMENT_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "EQUIPMENT_003", "사용할 수 없는 비품입니다."),
 
 	// 권한
 	NO_PERMISSION(HttpStatus.FORBIDDEN, "AUTH_001", "권한이 없습니다.");

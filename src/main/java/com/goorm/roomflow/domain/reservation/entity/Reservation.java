@@ -110,4 +110,8 @@ public class Reservation extends BaseEntity {
 		this.cancelReason = reason;
 	}
 
+	public void updateTotalAmount(BigDecimal newTotalAmount) {
+		this.totalAmount = newTotalAmount;
+	}
+
 }

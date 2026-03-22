@@ -1,6 +1,17 @@
 package com.goorm.roomflow.domain.reservation.entity;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
+@Getter
+@RequiredArgsConstructor
 public enum ReservationStatus {
-	PENDING, CONFIRMED, CANCELLED, EXPIRED
+	PENDING("대기"),
+	CONFIRMED("확정"),
+	CANCELLED("취소"),
+	EXPIRED("만료");
+
+	private final String description;
 }
+
+

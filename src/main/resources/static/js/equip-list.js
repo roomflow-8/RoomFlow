@@ -425,9 +425,8 @@ function submitEquipments() {
 
     const equipmentList = Array.from(selectedEquipments.values()).map(item => ({
         equipmentId: parseInt(item.id),
-        equipmentName: item.name,
         quantity: item.quantity,
-        price: item.price
+        unitPrice: item.price //단가
     }));
 
     console.log('선택된 비품:', equipmentList);
@@ -440,7 +439,7 @@ function submitEquipments() {
     alert(`${selectedEquipments.size}개의 비품이 선택되었습니다.\n총 ${document.getElementById('total-fee').textContent}원`);
 
     // 다음 페이지로 이동
-    window.location.href = '/confirm';
+    window.location.href = `/rooms/{reservationId}`;
 }
 
 // ==================== 상세 정보 ====================

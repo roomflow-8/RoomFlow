@@ -1,16 +1,24 @@
 package com.goorm.roomflow.domain.reservation.controller;
 
+import com.goorm.roomflow.domain.equipment.dto.response.EquipmentReservationRes;
+import com.goorm.roomflow.domain.reservation.dto.request.AddEquipmentsReq;
 import com.goorm.roomflow.domain.reservation.dto.request.CancelReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.ConfirmReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomReq;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
+import com.goorm.roomflow.domain.reservation.entity.ReservationEquipment;
 import com.goorm.roomflow.domain.reservation.service.ReservationService;
 import com.goorm.roomflow.global.code.SuccessCode;
 import com.goorm.roomflow.global.response.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/reservations")
@@ -37,6 +45,21 @@ public class ReservationRestController {
                 SuccessCode.RESERVATION_SUCCESS,
                 reservationRoomRes
         );
+    }
+
+    @PostMapping("/{reservationId}/equipments")
+    public ResponseEntity<ApiResponse<EquipmentReservationRes>> addEquipments(@PathVariable Long reservationId,
+                                                                    @Valid @RequestBody AddEquipmentsReq request) {
+
+        log.info("비품 예약 요청 - reservationId: {}, count: {}", reservationId, request.equipments().size());
+
+        EquipmentReservationRes result = reservationService.addEquipmentsToReservation(reservationId, request);
+
+        return ApiResponse.success(
+                SuccessCode.EQUIPMENT_ADDED,
+                result
+        );
+
     }
 
     @PatchMapping("/{reservationId}/confirm")
