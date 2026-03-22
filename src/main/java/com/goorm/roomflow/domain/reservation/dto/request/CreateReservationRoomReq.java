@@ -8,11 +8,6 @@ public record CreateReservationRoomReq(
 
 		Long roomId,
 		List<Long> roomSlotIds,
-		String idempotencyKey,
-
-		/*
-		260321 ES 회의실 + 비품 동시 예약하도록 추가
-		 */
-		List<EquipmentReservationReq> equipments
+		String idempotencyKey
 ) {
 }

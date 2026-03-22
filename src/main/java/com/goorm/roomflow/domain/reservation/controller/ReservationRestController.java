@@ -1,5 +1,6 @@
 package com.goorm.roomflow.domain.reservation.controller;
 
+import com.goorm.roomflow.domain.equipment.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.reservation.dto.request.AddEquipmentsReq;
 import com.goorm.roomflow.domain.reservation.dto.request.CancelReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.ConfirmReservationReq;
@@ -47,12 +48,12 @@ public class ReservationRestController {
     }
 
     @PostMapping("/{reservationId}/equipments")
-    public ResponseEntity<ApiResponse<List<ReservationEquipment>>> addEquipments(@PathVariable Long reservationId,
+    public ResponseEntity<ApiResponse<EquipmentReservationRes>> addEquipments(@PathVariable Long reservationId,
                                                                     @Valid @RequestBody AddEquipmentsReq request) {
 
         log.info("비품 예약 요청 - reservationId: {}, count: {}", reservationId, request.equipments().size());
 
-        List<ReservationEquipment> result = reservationService.addEquipmentsToReservation(reservationId, request);
+        EquipmentReservationRes result = reservationService.addEquipmentsToReservation(reservationId, request);
 
         return ApiResponse.success(
                 SuccessCode.EQUIPMENT_ADDED,
@@ -60,8 +61,6 @@ public class ReservationRestController {
         );
 
     }
-
-
 
     @PatchMapping("/{reservationId}/confirm")
     public ResponseEntity<ApiResponse<Void>> confirmReservation(@PathVariable Long reservationId, @RequestBody ConfirmReservationReq request) {
