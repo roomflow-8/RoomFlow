@@ -1,12 +1,10 @@
-package com.goorm.roomflow.domain.equipment.dto.response;
+package com.goorm.roomflow.domain.reservation.dto.response;
 
 import com.goorm.roomflow.domain.reservation.entity.Reservation;
 import com.goorm.roomflow.domain.reservation.entity.ReservationEquipment;
 
 import java.math.BigDecimal;
 import java.util.List;
-
-import static com.goorm.roomflow.domain.reservation.entity.QReservation.reservation;
 
 public record EquipmentReservationRes(
 		Long reservationId,

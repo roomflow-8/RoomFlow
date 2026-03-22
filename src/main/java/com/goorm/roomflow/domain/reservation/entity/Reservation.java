@@ -68,9 +68,7 @@ public class Reservation extends BaseEntity {
 		this.status = ReservationStatus.PENDING;
 	}
 
-	/*
-	260319 ES getReservationInfoTest 로 추가
-	 */
+	//미사용시 삭제예정
 	public Reservation(ReservationStatus reservationStatus, MeetingRoom room) {
 		super();
 	}

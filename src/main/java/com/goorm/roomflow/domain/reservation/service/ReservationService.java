@@ -1,14 +1,12 @@
 package com.goorm.roomflow.domain.reservation.service;
 
 import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
-import com.goorm.roomflow.domain.equipment.dto.response.EquipmentReservationRes;
+import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.reservation.dto.request.AddEquipmentsReq;
 import com.goorm.roomflow.domain.reservation.dto.request.CancelReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.ConfirmReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomReq;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
-import com.goorm.roomflow.domain.reservation.entity.ReservationEquipment;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 

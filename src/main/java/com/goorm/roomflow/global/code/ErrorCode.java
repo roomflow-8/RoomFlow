@@ -28,6 +28,7 @@ public enum ErrorCode {
 	RESERVATION_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "RESERVATION_005", "이미 확정된 예약입니다."),
 	RESERVATION_EXPIRED(HttpStatus.BAD_REQUEST, "RESERVATION_006", "만료된 예약입니다."),
 	INVALID_RESERVATION_STATUS(HttpStatus.BAD_REQUEST, "RESERVATION_007", "요청을 처리할 수 없는 예약 상태입니다."),
+	RESERVATION_NOT_CONFIRMED(HttpStatus.BAD_REQUEST, "RESERVATION_008", "확정되지 않은 예약입니다."),
 
 	// 비품
 	EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EQUIPMENT_001", "비품이 존재하지 않습니다."),

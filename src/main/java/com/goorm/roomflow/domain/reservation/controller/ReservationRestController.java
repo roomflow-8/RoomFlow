@@ -1,12 +1,11 @@
 package com.goorm.roomflow.domain.reservation.controller;
 
-import com.goorm.roomflow.domain.equipment.dto.response.EquipmentReservationRes;
+import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.reservation.dto.request.AddEquipmentsReq;
 import com.goorm.roomflow.domain.reservation.dto.request.CancelReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.ConfirmReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomReq;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
-import com.goorm.roomflow.domain.reservation.entity.ReservationEquipment;
 import com.goorm.roomflow.domain.reservation.service.ReservationService;
 import com.goorm.roomflow.global.code.SuccessCode;
 import com.goorm.roomflow.global.response.ApiResponse;
@@ -15,8 +14,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @Slf4j
 @RestController
@@ -80,4 +77,11 @@ public class ReservationRestController {
         reservationService.cancelReservation(reservationId, request);
         return ApiResponse.success(SuccessCode.RESERVATION_CANCELLED);
     }
+
+    /*
+    //TODO:
+    비품 예약 확정
+    /{reservationId}/equipments/confim
+     */
+
 }

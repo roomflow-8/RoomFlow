@@ -418,6 +418,7 @@ function removeFromCart(id) {
 
 // ==================== 제출 ====================
 function submitEquipments() {
+    //TODO: 비품 예약 확정 API
     if (selectedEquipments.size === 0) {
         alert('비품을 선택해주세요.');
         return;
