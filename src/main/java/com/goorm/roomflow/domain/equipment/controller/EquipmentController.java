@@ -30,7 +30,7 @@ public class EquipmentController {
 	@GetMapping("/{reservationId}/equipments")
 	public String readAvailableEquipments(Long reservationId, Model model) {
 		log.info("비품 선택 페이지 요청 - reservationId: {}", reservationId);
-		model.addAttribute("reservationId", 65L);
+		model.addAttribute("reservationId", reservationId);
 		return "equipment/list";
 	}
 

@@ -1,4 +1,4 @@
-package com.goorm.roomflow.domain.equipment.dto.request;
+package com.goorm.roomflow.domain.reservation.dto.request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;

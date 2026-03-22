@@ -1,8 +1,8 @@
 package com.goorm.roomflow.domain.reservation.service;
 
 import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
-import com.goorm.roomflow.domain.equipment.dto.request.EquipmentReservationReq;
-import com.goorm.roomflow.domain.equipment.dto.response.EquipmentReservationRes;
+import com.goorm.roomflow.domain.reservation.dto.request.EquipmentReservationReq;
+import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.equipment.entity.Equipment;
 import com.goorm.roomflow.domain.equipment.entity.EquipmentStatus;
 import com.goorm.roomflow.domain.equipment.repository.EquipmentRepository;
@@ -356,7 +356,7 @@ public class ReservationServiceImpl implements ReservationService {
 	}
 
 	/**
-	 * 1. 비품만 예약 확정하는 서비스 메서드
+	 * 비품 예약 확정 서비스 메서드
 	 * - 이미 확정된 회의실 예약에 비품을 추가하고 바로 확정
 	 */
 	@Override
@@ -366,13 +366,29 @@ public class ReservationServiceImpl implements ReservationService {
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
+		// 회의실 예약이 확정 상태인지 확인
+		if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+			throw new BusinessException(ErrorCode.RESERVATION_NOT_CONFIRMED);
+		}
 
 		confirmEquipment(reservationId, reservationEquipmentIds);
 	}
 
 
 	/* TODO: 2. 비품 예약 private 메서드 */
-	private void confirmEquipment(Long reservationId, List<Long> longs) {
+	/**
+	 *  비품 예약 확정 private 메서드
+	 * - reservationEquipmentIds에 해당하는 비품 예약들을 CONFIRMED로 변경
+	 */
+	private void confirmEquipment(Long reservationId, List<Long> reservationEquipmentIds) {
+		log.info("비품 예약 확정 시작 - reservationId: {}, equipmentIds: {}",
+				reservationId, reservationEquipmentIds);
+
+		List<ReservationEquipment> reservationEquipments =
+				reservationEquipmentRepository.findAllById(reservationEquipmentIds);
+
+
+
 	}
 
 	/**
@@ -483,6 +499,12 @@ public class ReservationServiceImpl implements ReservationService {
 		Equipment equipment = equipmentRepository.findById(equipmentId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
 
+		/*
+		260322 ES Equipment Repository와 연결
+		Equipment equipment = equipmentRepository.findByEquipmentIdWithLock(equipmentId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
+		 */
+
 		int reservedQuantity = reservationEquipmentRepository
 				.calculateReservedQuantity(equipmentId, startTime, endTime);
 
@@ -508,7 +530,6 @@ public class ReservationServiceImpl implements ReservationService {
 		List<ReservationRoom> reservationRooms = reservationRoomRepository
 				.findByReservation(reservation);
 
-		log.info("---383--");
 		log.info(reservation.toString());
 
 		BigDecimal roomTotal = reservationRooms.stream()

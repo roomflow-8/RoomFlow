@@ -15,6 +15,22 @@ public record EquipmentAvailabilityDto(
 		BigDecimal price
 ) {
 	@QueryProjection
-	public EquipmentAvailabilityDto{
+	public EquipmentAvailabilityDto
+			(
+					Long equipmentId,
+					String equipmentName,
+					String imageUrl,
+					Integer totalStock,
+					Integer availableStock,
+					EquipmentStatus status,
+					BigDecimal price
+			) {
+		this.equipmentId = equipmentId;
+		this.equipmentName = equipmentName;
+		this.imageUrl = imageUrl;
+		this.totalStock = totalStock;
+		this.availableStock = Math.max(0, availableStock != null ? availableStock : 0);
+		this.status = status;
+		this.price = price;
 	}
 }
