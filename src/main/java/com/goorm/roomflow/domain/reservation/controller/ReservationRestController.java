@@ -1,6 +1,8 @@
 package com.goorm.roomflow.domain.reservation.controller;
 
 import com.goorm.roomflow.domain.reservation.dto.request.AddEquipmentsReq;
+import com.goorm.roomflow.domain.reservation.dto.request.CancelReservationReq;
+import com.goorm.roomflow.domain.reservation.dto.request.ConfirmReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomReq;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.entity.ReservationEquipment;
@@ -61,4 +63,22 @@ public class ReservationRestController {
 
 
 
+    @PatchMapping("/{reservationId}/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmReservation(@PathVariable Long reservationId, @RequestBody ConfirmReservationReq request) {
+
+        reservationService.confirmReservation(reservationId, request);
+
+        return ApiResponse.success(
+                SuccessCode.RESERVATION_SUCCESS
+        );
+    }
+
+    @PatchMapping("/{reservationId}/cancel")
+    public ResponseEntity<ApiResponse<Void>> cancelReservation(
+            @PathVariable Long reservationId,
+            @RequestBody CancelReservationReq request
+    ) {
+        reservationService.cancelReservation(reservationId, request);
+        return ApiResponse.success(SuccessCode.RESERVATION_CANCELLED);
+    }
 }

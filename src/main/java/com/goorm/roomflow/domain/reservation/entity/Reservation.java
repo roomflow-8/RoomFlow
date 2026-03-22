@@ -3,6 +3,8 @@ package com.goorm.roomflow.domain.reservation.entity;
 import com.goorm.roomflow.domain.BaseEntity;
 import com.goorm.roomflow.domain.room.entity.MeetingRoom;
 import com.goorm.roomflow.domain.user.entity.User;
+import com.goorm.roomflow.global.code.ErrorCode;
+import com.goorm.roomflow.global.exception.BusinessException;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -29,11 +31,9 @@ public class Reservation extends BaseEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long reservationId;
 
-//	@ManyToOne(fetch = FetchType.LAZY)
-//	@JoinColumn(name = "user_id", nullable = false)
-//	private User user;
-	@Column(name = "user_id", nullable = false)
-	private Long userId;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "room_id", nullable = false)
@@ -57,13 +57,11 @@ public class Reservation extends BaseEntity {
 
 	@Builder
 	public Reservation(
-//			User user,
-					   Long userId,
-					   MeetingRoom meetingRoom, String idempotencyKey,
-					   BigDecimal totalAmount) {
+			User user,
+			MeetingRoom meetingRoom, String idempotencyKey,
+			BigDecimal totalAmount) {
 
-//		this.user = user;
-		this.userId = userId;
+		this.user = user;
 		this.meetingRoom = meetingRoom;
 		this.idempotencyKey = idempotencyKey;
 		this.totalAmount = (totalAmount != null) ? totalAmount : BigDecimal.ZERO;
@@ -77,12 +75,36 @@ public class Reservation extends BaseEntity {
 		super();
 	}
 
-	// --- 비즈니스 로직 ---
-	public void confirm() {
+	public void confirm(String memo) {
+
+		if (this.status != ReservationStatus.PENDING) {
+
+			if (this.status == ReservationStatus.CONFIRMED) {
+				throw new BusinessException(ErrorCode.RESERVATION_ALREADY_CONFIRMED);
+			}
+
+			if (this.status == ReservationStatus.EXPIRED) {
+				throw new BusinessException(ErrorCode.RESERVATION_EXPIRED);
+			}
+
+			throw new BusinessException(ErrorCode.INVALID_RESERVATION_STATUS);
+		}
+
 		this.status = ReservationStatus.CONFIRMED;
+		this.memo = memo;
 	}
 
 	public void cancel(String reason) {
+
+		if(this.status != ReservationStatus.CONFIRMED) {
+
+			if(this.status == ReservationStatus.CANCELLED) {
+				throw new BusinessException(ErrorCode.RESERVATION_CANCELLED);
+			}
+
+			throw new BusinessException(ErrorCode.INVALID_RESERVATION_STATUS);
+		}
+
 		this.status = ReservationStatus.CANCELLED;
 		this.cancelledAt = LocalDateTime.now();
 		this.cancelReason = reason;
