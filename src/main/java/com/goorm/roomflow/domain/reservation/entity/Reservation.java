@@ -87,7 +87,7 @@ public class Reservation extends BaseEntity {
 				throw new BusinessException(ErrorCode.RESERVATION_EXPIRED);
 			}
 
-			throw new BusinessException(ErrorCode.RESERVATION_NOT_PENDING);
+			throw new BusinessException(ErrorCode.INVALID_RESERVATION_STATUS);
 		}
 
 		this.status = ReservationStatus.CONFIRMED;
@@ -95,6 +95,16 @@ public class Reservation extends BaseEntity {
 	}
 
 	public void cancel(String reason) {
+
+		if(this.status != ReservationStatus.CONFIRMED) {
+
+			if(this.status == ReservationStatus.CANCELLED) {
+				throw new BusinessException(ErrorCode.RESERVATION_CANCELLED);
+			}
+
+			throw new BusinessException(ErrorCode.INVALID_RESERVATION_STATUS);
+		}
+
 		this.status = ReservationStatus.CANCELLED;
 		this.cancelledAt = LocalDateTime.now();
 		this.cancelReason = reason;
