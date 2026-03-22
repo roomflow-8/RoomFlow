@@ -7,6 +7,8 @@ import com.goorm.roomflow.domain.reservation.dto.response.ReservationTimeSlot;
 import com.goorm.roomflow.domain.reservation.entity.Reservation;
 import com.goorm.roomflow.domain.reservation.entity.ReservationRoom;
 import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
+import com.goorm.roomflow.domain.reservation.entity.TargetType;
+import com.goorm.roomflow.domain.reservation.event.ReservationStatusChangedEvent;
 import com.goorm.roomflow.domain.reservation.mapper.ReservationRoomMapper;
 import com.goorm.roomflow.domain.reservation.repository.ReservationRepository;
 import com.goorm.roomflow.domain.reservation.repository.ReservationRoomRepository;
@@ -15,9 +17,12 @@ import com.goorm.roomflow.domain.room.entity.RoomSlot;
 import com.goorm.roomflow.domain.room.entity.RoomStatus;
 import com.goorm.roomflow.domain.room.repository.MeetingRoomRepository;
 import com.goorm.roomflow.domain.room.repository.RoomSlotRepository;
+import com.goorm.roomflow.domain.user.entity.User;
+import com.goorm.roomflow.domain.user.repository.UserJpaRepository;
 import com.goorm.roomflow.global.code.ErrorCode;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,11 +37,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ReservationServiceImpl implements ReservationService {
 
+    private final UserJpaRepository userRepository;
     private final MeetingRoomRepository meetingRoomRepository;
     private final RoomSlotRepository roomSlotRepository;
     private final ReservationRepository reservationRepository;
     private final ReservationRoomRepository reservationRoomRepository;
     private final ReservationRoomMapper reservationRoomMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 회의실 예약 정보를 조회한다.
@@ -99,6 +106,9 @@ public class ReservationServiceImpl implements ReservationService {
     @Transactional
     public ReservationRoomRes createReservationRoom(CreateReservationRoomReq request) {
 
+        // 임시 데이터
+        User user = userRepository.findById(1L).get();
+
         // 1. 회의실 조회
         MeetingRoom meetingRoom = meetingRoomRepository.findById(request.roomId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND));
@@ -135,12 +145,21 @@ public class ReservationServiceImpl implements ReservationService {
 
         // 5. 예약 생성
         Reservation reservation = new Reservation(
-                1L,
+                user,
                 meetingRoom,
                 request.idempotencyKey(),
                 totalAmount);
 
         reservationRepository.save(reservation);
+
+        // 5-1. 예약 history 발행
+        publishReservationStatusChangedEvent(
+                reservation,
+                null,
+                reservation.getStatus(),
+                user,
+                "예약 생성"
+        );
 
         // 6. 회의실 예약 생성
         List<ReservationRoom> reservationRooms = roomSlots.stream()
@@ -182,8 +201,19 @@ public class ReservationServiceImpl implements ReservationService {
         Reservation reservation = reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
+        ReservationStatus fromStatus = reservation.getStatus();
+
         // 회의실 예약 확정
         reservation.confirm(request.memo());
+
+        // 이벤트 발행
+        publishReservationStatusChangedEvent(
+                reservation,
+                fromStatus,
+                reservation.getStatus(),
+                reservation.getUser(),
+                request.memo()
+        );
 
         // TODO: 비품 예약이 있으면 함께 확정
         if (request.reservationEquipmentIds() != null && !request.reservationEquipmentIds().isEmpty()) {
@@ -232,5 +262,28 @@ public class ReservationServiceImpl implements ReservationService {
     // 회의실 시간당 요금과 예약 슬롯 수를 기준으로 총 예약 금액을 계산한다.
     private BigDecimal calcTotalAmount(BigDecimal hourlyPrice, List<RoomSlot> roomSlots) {
         return hourlyPrice.multiply(BigDecimal.valueOf(roomSlots.size()));
+    }
+
+    // 예약 상태 변화 이벤트 발행
+    private void publishReservationStatusChangedEvent(
+            Reservation reservation,
+            ReservationStatus fromStatus,
+            ReservationStatus toStatus,
+            User changedBy,
+            String reason
+    ) {
+        if (fromStatus == toStatus) {
+            return;
+        }
+
+        eventPublisher.publishEvent(new ReservationStatusChangedEvent(
+                reservation,
+                TargetType.RESERVATION,
+                reservation.getReservationId(),
+                fromStatus,
+                toStatus,
+                changedBy,
+                reason
+        ));
     }
 }

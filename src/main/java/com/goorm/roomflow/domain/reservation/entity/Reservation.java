@@ -31,11 +31,9 @@ public class Reservation extends BaseEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long reservationId;
 
-//	@ManyToOne(fetch = FetchType.LAZY)
-//	@JoinColumn(name = "user_id", nullable = false)
-//	private User user;
-	@Column(name = "user_id", nullable = false)
-	private Long userId;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "room_id", nullable = false)
@@ -59,13 +57,11 @@ public class Reservation extends BaseEntity {
 
 	@Builder
 	public Reservation(
-//			User user,
-					   Long userId,
-					   MeetingRoom meetingRoom, String idempotencyKey,
-					   BigDecimal totalAmount) {
+			User user,
+			MeetingRoom meetingRoom, String idempotencyKey,
+			BigDecimal totalAmount) {
 
-//		this.user = user;
-		this.userId = userId;
+		this.user = user;
 		this.meetingRoom = meetingRoom;
 		this.idempotencyKey = idempotencyKey;
 		this.totalAmount = (totalAmount != null) ? totalAmount : BigDecimal.ZERO;
