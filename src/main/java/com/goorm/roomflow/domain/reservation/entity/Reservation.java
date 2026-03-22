@@ -55,7 +55,6 @@ public class Reservation extends BaseEntity {
 	private LocalDateTime cancelledAt;
 	private String cancelReason;
 
-	//TODO: startAt, endAt 삭제
 	@Builder
 	public Reservation(
 //			User user,
@@ -87,6 +86,10 @@ public class Reservation extends BaseEntity {
 		this.status = ReservationStatus.CANCELLED;
 		this.cancelledAt = LocalDateTime.now();
 		this.cancelReason = reason;
+	}
+
+	public void updateTotalAmount(BigDecimal newTotalAmount) {
+		this.totalAmount = newTotalAmount;
 	}
 
 }

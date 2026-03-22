@@ -4,10 +4,12 @@ import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomRe
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.service.ReservationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 @RequestMapping("/reservations")

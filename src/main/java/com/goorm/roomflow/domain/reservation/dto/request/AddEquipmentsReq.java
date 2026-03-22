@@ -1,18 +1,14 @@
 package com.goorm.roomflow.domain.reservation.dto.request;
 
 import com.goorm.roomflow.domain.equipment.dto.request.EquipmentReservationReq;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 
 import java.util.List;
 
-public record CreateReservationRoomReq(
-
-		Long roomId,
-		List<Long> roomSlotIds,
-		String idempotencyKey,
-
-		/*
-		260321 ES 회의실 + 비품 동시 예약하도록 추가
-		 */
+public record AddEquipmentsReq(
+		@NotEmpty(message = "비품을 선택해주세요.")
+		@Valid
 		List<EquipmentReservationReq> equipments
 ) {
 }

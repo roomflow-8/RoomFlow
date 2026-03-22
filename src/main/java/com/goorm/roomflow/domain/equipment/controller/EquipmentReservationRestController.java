@@ -1,7 +1,6 @@
 package com.goorm.roomflow.domain.equipment.controller;
 
 import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
-import com.goorm.roomflow.domain.equipment.dto.EquipmentListRes;
 import com.goorm.roomflow.domain.equipment.service.EquipmentService;
 import com.goorm.roomflow.global.code.SuccessCode;
 import com.goorm.roomflow.global.response.ApiResponse;
