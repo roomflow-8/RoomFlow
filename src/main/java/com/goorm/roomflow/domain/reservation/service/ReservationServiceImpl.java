@@ -206,6 +206,9 @@ public class ReservationServiceImpl implements ReservationService {
         // 회의실 예약 확정
         reservation.confirm(request.memo());
 
+        // 회의실 예약 총 횟수 증가
+        reservation.getMeetingRoom().incrementReservations();
+
         // 이벤트 발행
         publishReservationStatusChangedEvent(
                 reservation,
