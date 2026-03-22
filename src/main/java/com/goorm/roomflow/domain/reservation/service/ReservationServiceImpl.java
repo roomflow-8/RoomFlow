@@ -1,5 +1,6 @@
 package com.goorm.roomflow.domain.reservation.service;
 
+import com.goorm.roomflow.domain.reservation.dto.request.CancelReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.ConfirmReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomReq;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
@@ -22,6 +23,7 @@ import com.goorm.roomflow.domain.user.repository.UserJpaRepository;
 import com.goorm.roomflow.global.code.ErrorCode;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -231,6 +233,59 @@ public class ReservationServiceImpl implements ReservationService {
 
     /* TODO: 2. 비품 예약 private 메서드 */
     private void confirmEquipment(){}
+
+    /**
+     * 회의실 예약을 취소한다.
+     * - 회의실 예약을 취소한 후, 회의실-예약 값을 삭제하고 슬롯을 다시 유효 상태로 변경한다.
+     *
+     * @param reservationId 예약 Key
+     * @throws BusinessException 예약이 존재하지 않거나 취소 가능한 상태가 아닌 경우 발생
+     */
+    @Override
+    @Transactional
+    public void cancelReservation(Long reservationId, CancelReservationReq request) {
+
+        // 예약 조회
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+
+        // TODO: 예약자 검증
+
+        ReservationStatus fromStatus = reservation.getStatus();
+
+        String reason = request.reason();
+
+        if (reason == null || reason.isBlank()) {
+            reason = "사용자 취소";
+        }
+
+        // 회의실 취소 상태 검증 및 변경
+        reservation.cancel(reason);
+
+        // 회의실 목록 조회
+        List<ReservationRoom> reservationRooms = reservationRoomRepository.findByReservation(reservation);
+
+        // 예약 상태 변경 - 슬롯 복구
+        reservationRooms.forEach(reservationRoom -> {
+            RoomSlot roomSlot = reservationRoom.getRoomSlot();
+            roomSlot.updateActiveStatus(true);
+        });
+
+        // 회의실 예약 슬롯 삭제
+        reservationRoomRepository.deleteAll(reservationRooms);
+
+        // TODO: 비품이 있는경우 함께 삭제
+
+        // 상태 이벤트 발행
+        publishReservationStatusChangedEvent(
+                reservation,
+                fromStatus,
+                reservation.getStatus(),
+                reservation.getUser(),
+                reason
+        );
+
+    }
 
     // 연속된 RoomSlot을 하나의 예약 시간 구간으로 병합한다.
     private List<ReservationTimeSlot> makeReservationTimeSlot(List<RoomSlot> roomSlots) {
