@@ -1,5 +1,6 @@
-package com.goorm.roomflow.domain.equipment.dto;
+package com.goorm.roomflow.domain.equipment.dto.response;
 
+import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
 import lombok.Builder;
 
 import java.time.LocalDate;

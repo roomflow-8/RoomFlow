@@ -8,6 +8,4 @@ import java.util.List;
 public record ConfirmReservationReq(
         List<Long> reservationEquipmentIds,
         String memo
-){
-
-}
+){ }

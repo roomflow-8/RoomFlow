@@ -1,8 +1,8 @@
-/*<![CDATA[*/
 let equipmentsData = [];
 let selectedEquipments = new Map();
 let requestInProgress = false; // 중복 요청 방지
 let retryCount = 0;
+
 const MAX_RETRY = 3;
 
 // ==================== 초기화 ====================
@@ -126,15 +126,48 @@ async function loadEquipments() {
  */
 function renderEquipments(equipments) {
     const container = document.getElementById('equipment-list');
+    if (!equipments || equipments.length === 0) {
+        container.innerHTML = `
+            <div class="col-span-full text-center py-12">
+                <i data-lucide="package-x" class="w-16 h-16 mx-auto text-gray-400 mb-4"></i>
+                <p class="text-gray-500">선택한 시간대에 사용 가능한 비품이 없습니다.</p>
+            </div>
+        `;
+        lucide.createIcons();
+        return;
+    }
+
+    const sortedEquipments = sortEquipmentsByAvailability(equipments);
+
     container.innerHTML = '';
 
-    equipments.forEach((equipment, index) => {
+    sortedEquipments.forEach((equipment, index) => {
         const card = createEquipmentCard(equipment);
         card.style.animationDelay = `${index * 0.05}s`; // 순차적 애니메이션
         container.appendChild(card);
     });
 
     lucide.createIcons();
+}
+
+
+function sortEquipmentsByAvailability(equipments) {
+    return equipments.sort((a, b) => {
+        const aAvailable = a.availableStock > 0 && a.status === 'AVAILABLE';
+        const bAvailable = b.availableStock > 0 && b.status === 'AVAILABLE';
+
+        // 대여 가능한 것이 먼저 오도록
+        if (aAvailable && !bAvailable) return -1;  // a가 앞으로
+        if (!aAvailable && bAvailable) return 1;   // b가 앞으로
+
+        // 둘 다 같은 상태면 재고 많은 순
+        if (aAvailable && bAvailable) {
+            return b.availableStock - a.availableStock;
+        }
+
+        // 둘 다 대여 불가면 이름 순
+        return a.equipmentName.localeCompare(b.equipmentName);
+    });
 }
 
 /**
@@ -418,35 +451,165 @@ function removeFromCart(id) {
 
 // ==================== 제출 ====================
 function submitEquipments() {
+    //TODO: 비품 예약 확정 API
     if (selectedEquipments.size === 0) {
         alert('비품을 선택해주세요.');
         return;
     }
 
+    // 중복 클릭 방지
+    if (requestInProgress) {
+        console.log('요청이 이미 진행 중입니다.');
+        return;
+    }
+
+    // 예약 정보 가져오기
+    const reservationInfo = document.getElementById('reservation-info');
+    const reservationId = reservationInfo.dataset.reservationId;
+    const reservationStatus = reservationInfo.dataset.reservationStatus;
+
     const equipmentList = Array.from(selectedEquipments.values()).map(item => ({
         equipmentId: parseInt(item.id),
-        equipmentName: item.name,
         quantity: item.quantity,
-        price: item.price
     }));
 
     console.log('선택된 비품:', equipmentList);
+    console.log('예약 상태:', reservationStatus);
 
-    // localStorage에 저장
-    localStorage.setItem('selectedEquipments', JSON.stringify(equipmentList));
-    localStorage.setItem('reservationId', reservationId);
-    localStorage.setItem('equipmentSubmitTime', new Date().toISOString());
+    // 로딩 표시
+    const submitBtn = event.target;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i data-lucide="loader" class="w-4 h-4 inline animate-spin"></i> 처리중...';
+    lucide.createIcons();
 
-    alert(`${selectedEquipments.size}개의 비품이 선택되었습니다.\n총 ${document.getElementById('total-fee').textContent}원`);
+    requestInProgress = true;
 
-    // 다음 페이지로 이동
-    window.location.href = '/confirm';
+// 예약 상태에 따라 다른 API 호출 ⭐
+    if (reservationStatus === 'CONFIRMED') {
+        // 시나리오 2: 기존 예약에 비품만 확정
+        confirmEquipmentsOnly(reservationId, equipmentList, submitBtn, originalText);
+    } else {
+        // 시나리오 1: 회의실 + 비품 함께 확정
+        confirmReservationWithEquipments(reservationId, equipmentList, submitBtn, originalText);
+    }
+
+    // ==================== 시나리오 1: 회의실 + 비품 함께 확정 ====================
+    async function confirmReservationWithEquipments(reservationId, equipmentList, submitBtn, originalText) {
+        try {
+            // 1단계: 비품 예약 추가 (PENDING)
+            const addResponse = await fetch(`/api/v1/reservations/${reservationId}/equipments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    equipments: equipmentList
+                })
+            });
+
+            if (!addResponse.ok) {
+                throw new Error('비품 추가 실패');
+            }
+
+            const addResult = await addResponse.json();
+            const reservationEquipmentIds = addResult.data.map(item => item.reservationEquipmentId);
+
+            console.log('비품 예약 ID:', reservationEquipmentIds);
+
+            // 2단계: 회의실 + 비품 함께 확정
+            const confirmResponse = await fetch(`/api/v1/reservations/${reservationId}/confirm`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    reservationEquipmentIds: reservationEquipmentIds,
+                    memo: '비품 포함 예약 확정'
+                })
+            });
+
+            if (!confirmResponse.ok) {
+                throw new Error('예약 확정 실패');
+            }
+
+            alert(`예약이 확정되었습니다.\n비품 ${equipmentList.length}개 포함`);
+            window.location.href = `/mypage/reservations`; /*결제 page 이동*/
+
+        } catch (error) {
+            console.error('예약 확정 실패:', error);
+            alert('예약 확정에 실패했습니다. 다시 시도해주세요.');
+
+            // 버튼 복구
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            lucide.createIcons();
+        } finally {
+            requestInProgress = false;
+        }
+    }
+
+// ==================== 시나리오 2: 비품만 확정 ====================
+    async function confirmEquipmentsOnly(reservationId, equipmentList, submitBtn, originalText) {
+        try {
+            // 1단계: 비품 예약 추가 (PENDING)
+            const addResponse = await fetch(`/api/v1/reservations/${reservationId}/equipments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    equipments: equipmentList
+                })
+            });
+
+            if (!addResponse.ok) {
+                throw new Error('비품 추가 실패');
+            }
+
+            const addResult = await addResponse.json();
+            const reservationEquipmentIds = addResult.data.map(item => item.reservationEquipmentId);
+
+            console.log('비품 예약 ID:', reservationEquipmentIds);
+
+            // 2단계: 비품만 확정
+            const confirmResponse = await fetch(`/api/v1/reservations/${reservationId}/equipments/confirm`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    reservationEquipmentIds: reservationEquipmentIds,
+                    reason: '비품 추가'
+                })
+            });
+
+            if (!confirmResponse.ok) {
+                throw new Error('비품 확정 실패');
+            }
+
+            alert(`비품 ${equipmentList.length}개가 추가되었습니다.`);
+            window.location.href = `/mypage/reservations/${reservationId}`; /*TODO: 주소 확인*/
+
+        } catch (error) {
+            console.error('비품 추가 실패:', error);
+            alert('비품 추가에 실패했습니다. 다시 시도해주세요.');
+
+            // 버튼 복구
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            lucide.createIcons();
+        } finally {
+            requestInProgress = false;
+        }
+    }
+
 }
 
 // ==================== 상세 정보 ====================
 
 /**
- * 비품 상세 정보 표시 (React Dialog 스타일 모달)
+ * 비품 상세 정보 표시
  */
 function showDetail(id) {
     const equipment = findEquipment(id);

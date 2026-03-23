@@ -4,8 +4,8 @@ import java.util.List;
 
 public record CreateReservationRoomReq(
 
-        Long roomId,
-        List<Long> roomSlotIds,
-        String idempotencyKey
+		Long roomId,
+		List<Long> roomSlotIds,
+		String idempotencyKey
 ) {
 }

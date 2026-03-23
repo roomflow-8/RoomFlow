@@ -3,25 +3,29 @@ package com.goorm.roomflow.domain.reservation.controller;
 import com.goorm.roomflow.domain.reservation.dto.request.ConfirmReservationReq;
 import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomReq;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
+import com.goorm.roomflow.domain.reservation.service.ReservationLockFacade;
 import com.goorm.roomflow.domain.reservation.service.ReservationService;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 @RequestMapping("/reservations")
 public class ReservationController {
 
     private final ReservationService reservationService;
+    private final ReservationLockFacade reservationLockFacade;
 
     @PostMapping
     public String createRoomReservation(@ModelAttribute CreateReservationRoomReq request) {
 
-        Long reservationId = reservationService.createReservationRoom(request).reservationId();
+        Long reservationId = reservationLockFacade.createReservationRoom(request).reservationId();
 
         return "redirect:/reservations/rooms/" + reservationId;
     }
@@ -54,5 +58,11 @@ public class ReservationController {
 
             return "redirect:/reservations/rooms/" + reservationId;
         }
+    }
+
+    @PostMapping("/{reservationId}/back")
+    public String goBackAndExpire(@PathVariable Long reservationId) {
+        reservationService.expireReservation(reservationId);
+        return "redirect:/rooms";
     }
 }

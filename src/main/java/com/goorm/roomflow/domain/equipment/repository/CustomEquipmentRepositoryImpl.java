@@ -99,7 +99,7 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 												roomSlot.slotStartAt.lt(reservationInfo.endAt()),
 												roomSlot.slotEndAt.gt(reservationInfo.startAt())
 										)
-						),
+						), //대여가능수량
 						equipment.status,
 						equipment.price
 				))

@@ -33,7 +33,7 @@ public class Equipment extends BaseEntity {
 	private int maintenanceLimit = 0;
 
 	@Column(nullable = false, precision = 10, scale = 0)
-	private BigDecimal price = BigDecimal.ZERO;
+	private BigDecimal price;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
@@ -47,7 +47,8 @@ public class Equipment extends BaseEntity {
 
 	@Builder
 	public Equipment(String equipmentName, int totalStock, String description,
-					 int maintenanceLimit, BigDecimal price, EquipmentStatus status, String imageUrl) {
+					 int maintenanceLimit, BigDecimal price, EquipmentStatus status,
+					 int totalReservations, String imageUrl) {
 
 		// SQL의 CHECK 제약조건 (total_stock >= 0) 검증
 		if (totalStock < 0) {
@@ -60,6 +61,7 @@ public class Equipment extends BaseEntity {
 		this.maintenanceLimit = maintenanceLimit;
 		this.price = (price != null) ? price : BigDecimal.ZERO;
 		this.status = (status != null) ? status : EquipmentStatus.AVAILABLE;
+		this.totalReservations = totalReservations;
 		this.imageUrl = imageUrl;
 	}
 
@@ -67,6 +69,16 @@ public class Equipment extends BaseEntity {
 	public void updateStock(int newStock) {
 		if (newStock < 0) throw new IllegalArgumentException("재고 부족");
 		this.totalStock = newStock;
+	}
+
+	public void incrementReservations() {
+		this.totalReservations++;
+	}
+	public void decrementReservations() {
+		if (this.totalReservations <= 0) {
+			throw new IllegalStateException("예약 건수가 0 이하일 수 없습니다.");
+		}
+		this.totalReservations--;
 	}
 
 	public void changeStatus(EquipmentStatus status) {

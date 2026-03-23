@@ -68,9 +68,7 @@ public class Reservation extends BaseEntity {
 		this.status = ReservationStatus.PENDING;
 	}
 
-	/*
-	260319 ES getReservationInfoTest 로 추가
-	 */
+	//미사용시 삭제예정
 	public Reservation(ReservationStatus reservationStatus, MeetingRoom room) {
 		super();
 	}
@@ -108,6 +106,21 @@ public class Reservation extends BaseEntity {
 		this.status = ReservationStatus.CANCELLED;
 		this.cancelledAt = LocalDateTime.now();
 		this.cancelReason = reason;
+	}
+
+	public void expire(String reason) {
+		this.status = ReservationStatus.EXPIRED;
+		this.cancelledAt = LocalDateTime.now();
+		this.cancelReason = reason;
+	}
+
+	public boolean isPendingTimeout(LocalDateTime now, long pendingMinutes) {
+		return this.status == ReservationStatus.PENDING
+				&& this.getCreatedAt().plusMinutes(pendingMinutes).isBefore(now);
+	}
+
+	public void updateTotalAmount(BigDecimal newTotalAmount) {
+		this.totalAmount = newTotalAmount;
 	}
 
 }
