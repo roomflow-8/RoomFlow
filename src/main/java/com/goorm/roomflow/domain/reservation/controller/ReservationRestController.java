@@ -1,20 +1,20 @@
 package com.goorm.roomflow.domain.reservation.controller;
 
+import com.goorm.roomflow.domain.reservation.dto.request.*;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
-import com.goorm.roomflow.domain.reservation.dto.request.AddEquipmentsReq;
-import com.goorm.roomflow.domain.reservation.dto.request.CancelReservationReq;
-import com.goorm.roomflow.domain.reservation.dto.request.ConfirmReservationReq;
-import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomReq;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.service.ReservationService;
 import com.goorm.roomflow.global.code.SuccessCode;
 import com.goorm.roomflow.global.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Reservation API", description = "회의실/비품 예약 API")
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -44,6 +44,7 @@ public class ReservationRestController {
         );
     }
 
+    @Operation(summary = "비품 예약")
     @PostMapping("/{reservationId}/equipments")
     public ResponseEntity<ApiResponse<EquipmentReservationRes>> addEquipments(@PathVariable Long reservationId,
                                                                     @Valid @RequestBody AddEquipmentsReq request) {
@@ -59,6 +60,7 @@ public class ReservationRestController {
 
     }
 
+    @Operation(summary = "회의실 예약 확정")
     @PatchMapping("/{reservationId}/confirm")
     public ResponseEntity<ApiResponse<Void>> confirmReservation(@PathVariable Long reservationId, @RequestBody ConfirmReservationReq request) {
 
@@ -69,6 +71,7 @@ public class ReservationRestController {
         );
     }
 
+    @Operation(summary = "회의실 예약 취소")
     @PatchMapping("/{reservationId}/cancel")
     public ResponseEntity<ApiResponse<Void>> cancelReservation(
             @PathVariable Long reservationId,
@@ -79,9 +82,31 @@ public class ReservationRestController {
     }
 
     /*
-    //TODO:
-    비품 예약 확정
-    /{reservationId}/equipments/confim
+    기존 예약 건수에 대한 비품 예약 확정
      */
+    @Operation(summary = "회의실 기존 예약 건에 대한 비품 예약 확정")
+    @PostMapping("/{reservationId}/equipments/confirm")
+    public ResponseEntity<ApiResponse<Void>> confirmReservationEquipments(@PathVariable Long reservationId, @RequestBody @Valid ConfirmReservationReq request) {
+        log.info("비품 예약 확정 요청 - reservationId: {}, equipmentIds: {}",
+                reservationId, request.reservationEquipmentIds());
 
+        reservationService.confirmEquipmentsService(reservationId, request.reservationEquipmentIds());
+
+        return ApiResponse.success(SuccessCode.EQUIPMENT_ADDED);
+    }
+
+    /*
+    기존 예약 건수에 대한 비품 예약 취소
+
+     */
+    @Operation(summary = "회의실 기존 예약 건에 대한 비품 예약 취소")
+    @PostMapping("/{reservationId}/equipments/cancel")
+    public ResponseEntity<ApiResponse<Void>> cancelReservationEquipments(@PathVariable Long reservationId, @RequestBody @Valid CancelReservationEquipmentsReq request) {
+        log.info("비품 예약 취소 요청 - reservationId: {}, equipmentIds: {}",
+                reservationId, request.reservationEquipmentIds());
+
+        reservationService.cancelReservationEquipments(reservationId, request);
+
+        return ApiResponse.success(SuccessCode.EQUIPMENT_CANCELLED);
+    }
 }
