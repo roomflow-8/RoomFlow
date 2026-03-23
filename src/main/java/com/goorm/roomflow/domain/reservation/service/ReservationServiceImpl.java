@@ -29,6 +29,7 @@ import com.goorm.roomflow.global.code.ErrorCode;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RedissonClient;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -123,9 +124,8 @@ public class ReservationServiceImpl implements ReservationService {
 	 * @return 생성된 예약 정보 및 시간 슬롯 정보
 	 * @throws BusinessException 회의실 또는 슬롯이 존재하지 않거나 이미 예약된 경우 발생
 	 */
-	@Override
 	@Transactional
-	public ReservationRoomRes createReservationRoom(CreateReservationRoomReq request) {
+	public ReservationRoomRes createReservationRoomTransactional(CreateReservationRoomReq request) {
 
 		// 임시 데이터
 		User user = userRepository.findById(1L).get();
@@ -146,15 +146,19 @@ public class ReservationServiceImpl implements ReservationService {
 		// 3. 슬롯 조회
 		List<RoomSlot> roomSlots = roomSlotRepository.findByMeetingRoom_RoomIdAndRoomSlotIdIn(
 				request.roomId(), request.roomSlotIds());
-		LocalDate reservationDate = roomSlots.getFirst().getSlotStartAt().toLocalDate();
 
 		// 3-1. 슬롯 예외 처리
 		if (roomSlots.size() != request.roomSlotIds().size()) {
 			throw new BusinessException(ErrorCode.ROOM_SLOT_NOT_FOUND);
 		}
 
-		// 3-2. 슬롯 예약 확인
-		boolean hasUnavailableSlot = roomSlots.stream()
+		List<RoomSlot> sortedSlots = roomSlots.stream()
+				.sorted(Comparator.comparing(RoomSlot::getRoomSlotId))
+				.toList();
+
+		LocalDate reservationDate = roomSlots.getFirst().getSlotStartAt().toLocalDate();
+
+		boolean hasUnavailableSlot = sortedSlots.stream()
 				.anyMatch(slot -> !slot.isActive());
 
 		if (hasUnavailableSlot) {
@@ -176,7 +180,7 @@ public class ReservationServiceImpl implements ReservationService {
 		// 5-1. 예약 history 발행
 		publishReservationStatusChangedEvent(
 				reservation,
-				null,
+				ReservationStatus.NONE,
 				reservation.getStatus(),
 				user,
 				"예약 생성"
@@ -194,10 +198,10 @@ public class ReservationServiceImpl implements ReservationService {
 		reservationRoomRepository.saveAll(reservationRooms);
 
 		// 7. 슬롯 상태 변경
-		roomSlots.forEach(roomSlot -> roomSlot.updateActiveStatus(false));
+		sortedSlots.forEach(roomSlot -> roomSlot.updateActiveStatus(false));
 
 		// 8. 슬롯 정리
-		List<ReservationTimeSlot> reservationTimeSlots = makeReservationTimeSlot(roomSlots);
+		List<ReservationTimeSlot> reservationTimeSlots = makeReservationTimeSlot(sortedSlots);
 
 		// 9. 결과 반환
 		return reservationRoomMapper.toReservationRoomRes(
@@ -206,6 +210,7 @@ public class ReservationServiceImpl implements ReservationService {
 				reservationTimeSlots,
 				reservationDate
 		);
+
 	}
 
 	/**
@@ -564,11 +569,58 @@ public class ReservationServiceImpl implements ReservationService {
 		}
 	}
 
+	/**
+	 * 회의실 예약을 만료시킨다.
+	 * - 이전 단계로 돌아갈 때, 회의실 예약 상태를 만료상태로 변경하고 슬롯을 유효상태로 변경한다.
+	 *
+	 * @param reservationId 예약 Key
+	 * @throws BusinessException 예약이 존재하지 않거나 만료 가능한 상태가 아닌 경우 발생
+	 */
+	@Override
+	@Transactional
+	public void expireReservation(Long reservationId) {
+
+		// 예약 조회
+		Reservation reservation = reservationRepository.findById(reservationId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+
+		// TODO: 예약자 검증
+
+		ReservationStatus fromStatus = reservation.getStatus();
+
+		if(fromStatus == ReservationStatus.PENDING) {
+			String reason = "이전 상태로 이동";
+
+			// 회의실 취소 상태 검증 및 변경
+			reservation.expire(reason);
+
+			// 회의실 목록 조회
+			List<ReservationRoom> reservationRooms = reservationRoomRepository.findByReservation(reservation);
+
+			// 예약 상태 변경 - 슬롯 복구
+			reservationRooms.forEach(reservationRoom -> {
+				RoomSlot roomSlot = reservationRoom.getRoomSlot();
+				roomSlot.updateActiveStatus(true);
+			});
+
+			// 회의실 예약 슬롯 삭제
+			reservationRoomRepository.deleteAll(reservationRooms);
+
+			// 상태 이벤트 발행
+			publishReservationStatusChangedEvent(
+					reservation,
+					fromStatus,
+					reservation.getStatus(),
+					reservation.getUser(),
+					reason
+			);
+		}
+
+
+	}
+
 	// 연속된 RoomSlot을 하나의 예약 시간 구간으로 병합한다.
-	private List<ReservationTimeSlot> makeReservationTimeSlot(List<RoomSlot> roomSlots) {
-		List<RoomSlot> sortedSlots = roomSlots.stream()
-				.sorted(Comparator.comparing(RoomSlot::getSlotStartAt))
-				.toList();
+	private List<ReservationTimeSlot> makeReservationTimeSlot(List<RoomSlot> sortedSlots) {
 
 		List<ReservationTimeSlot> reservationTimeSlots = new ArrayList<>();
 
@@ -588,6 +640,9 @@ public class ReservationServiceImpl implements ReservationService {
 			start = slot.getSlotStartAt();
 			end = slot.getSlotEndAt();
 		}
+
+		reservationTimeSlots.add(new ReservationTimeSlot(start, end));
+
 		return reservationTimeSlots;
 	}
 

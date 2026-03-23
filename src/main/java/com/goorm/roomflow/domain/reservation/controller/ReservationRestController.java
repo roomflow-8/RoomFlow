@@ -3,6 +3,7 @@ package com.goorm.roomflow.domain.reservation.controller;
 import com.goorm.roomflow.domain.reservation.dto.request.*;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
+import com.goorm.roomflow.domain.reservation.service.ReservationLockFacade;
 import com.goorm.roomflow.domain.reservation.service.ReservationService;
 import com.goorm.roomflow.global.code.SuccessCode;
 import com.goorm.roomflow.global.response.ApiResponse;
@@ -22,11 +23,12 @@ import org.springframework.web.bind.annotation.*;
 public class ReservationRestController {
 
     private final ReservationService reservationService;
+    private final ReservationLockFacade reservationLockFacade;
 
     @PostMapping("/rooms")
     public ResponseEntity<ApiResponse<ReservationRoomRes>> createReservationRoom(@RequestBody CreateReservationRoomReq request) {
 
-        ReservationRoomRes reservationRoomRes = reservationService.createReservationRoom(request);
+        ReservationRoomRes reservationRoomRes = reservationLockFacade.createReservationRoom(request);
 
         return ApiResponse.success(
                 SuccessCode.RESERVATION_CREATED,
