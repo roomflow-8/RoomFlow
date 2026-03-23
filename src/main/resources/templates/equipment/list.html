@@ -17,7 +17,8 @@
 <div class="flex min-h-screen">
     <!-- Main Content -->
     <div class="flex-1">
-        <div id="equip-data" th:data-res-id="${reservationId}"></div>
+        <div id="equip-data" th:data-res-id="${reservationId}"
+             th:data-reservation-status="${reservationStatus}"></div>
 
         <main class="max-w-7xl mx-auto px-4 py-8">
             <!-- Back Button -->

@@ -71,6 +71,16 @@ public class Equipment extends BaseEntity {
 		this.totalStock = newStock;
 	}
 
+	public void incrementReservations() {
+		this.totalReservations++;
+	}
+	public void decrementReservations() {
+		if (this.totalReservations <= 0) {
+			throw new IllegalStateException("예약 건수가 0 이하일 수 없습니다.");
+		}
+		this.totalReservations--;
+	}
+
 	public void changeStatus(EquipmentStatus status) {
 		this.status = status;
 	}
