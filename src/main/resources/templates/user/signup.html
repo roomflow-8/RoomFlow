@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입 - RoomFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
+
+<div class="w-full max-w-md rounded-xl border bg-white shadow-sm p-8">
+    <div class="text-center mb-6">
+        <img th:src="@{/images/logo_tmp.png}" alt="RoomFlow 로고" class="w-16 h-16 object-contain mx-auto mb-3">
+        <h1 class="text-2xl font-bold text-gray-900 mb-1">회원가입</h1>
+        <p class="text-sm text-gray-500 leading-6">새 계정을 만들어 회의실을 예약하세요</p>
+    </div>
+
+    <!-- 에러 메시지 -->
+    <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-center text-sm text-red-600" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+    <form th:action="@{/users/signup}" method="post" class="space-y-4">
+
+        <!-- 이름 -->
+        <div class="space-y-2">
+            <label for="name" class="block text-sm font-medium text-gray-700">이름</label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   th:value="${name}"
+                   placeholder="한글 2~10자 또는 영문 2~20자"
+                   class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
+                   required />
+            <p class="text-xs text-gray-400">한글 2~10자 또는 영문 2~20자</p>
+        </div>
+
+        <!-- 이메일 -->
+        <div class="space-y-2">
+            <label for="email" class="block text-sm font-medium text-gray-700">아이디 (이메일)</label>
+            <input type="email"
+                   id="email"
+                   name="email"
+                   th:value="${email}"
+                   placeholder="example@email.com"
+                   class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
+                   required />
+            <p class="text-xs text-gray-500">이메일 인증 기능은 추후 연결 예정입니다.</p>
+        </div>
+
+        <!-- 비밀번호 -->
+        <div class="space-y-2">
+            <label for="password" class="block text-sm font-medium text-gray-700">비밀번호</label>
+            <input type="password"
+                   id="password"
+                   name="password"
+                   placeholder="영문, 숫자, 특수문자 포함 8자 이상"
+                   class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
+                   required />
+            <p class="text-xs text-gray-400">영문, 숫자, 특수문자 포함 8자 이상</p>
+        </div>
+
+        <!-- 비밀번호 확인 -->
+        <div class="space-y-2">
+            <label for="passwordConfirm" class="block text-sm font-medium text-gray-700">비밀번호 확인</label>
+            <input type="password"
+                   id="passwordConfirm"
+                   name="passwordConfirm"
+                   placeholder="비밀번호를 다시 입력하세요"
+                   class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
+                   required />
+        </div>
+
+        <button type="submit" class="inline-flex items-center justify-center w-full h-[50px] rounded-md bg-slate-900 text-white text-lg font-medium hover:bg-slate-800 transition-colors">회원가입</button>
+    </form>
+
+    <div class="text-center text-sm text-gray-600 mt-4">
+        이미 계정이 있으신가요? <a th:href="@{/users/login}" class="text-slate-900 hover:underline font-medium">로그인</a>
+    </div>
+
+    <div class="text-center mt-2">
+        <a th:href="@{/rooms}" class="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">홈으로 돌아가기</a>
+    </div>
+</div>
+
+</body>
+</html>

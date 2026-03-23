@@ -57,6 +57,10 @@ public class User extends BaseEntity {
 		return this.deletedAt != null;
 	}
 
+	public void updateName(String name) {
+		this.name = name;
+	}
+
 	public void updatePassword(String encodedPassword) {
 		this.password = encodedPassword;
 	}
