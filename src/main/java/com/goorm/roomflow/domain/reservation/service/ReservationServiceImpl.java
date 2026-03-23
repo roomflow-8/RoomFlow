@@ -40,7 +40,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import static java.util.Collections.min;
 
 @Slf4j
 @Service
@@ -455,7 +454,6 @@ public class ReservationServiceImpl implements ReservationService {
 			// 이벤트 발행
 			publishEquipmentsReservationStatusChangedEvent(
 					reservation,
-					TargetType.EQUIPMENT,
 					reservationEquipment.getReservationEquipmentId(),  // 비품 예약 ID
 					fromStatus,
 					reservationEquipment.getStatus(),
@@ -519,16 +517,28 @@ public class ReservationServiceImpl implements ReservationService {
 
 		// TODO: 비품이 있는경우 함께 삭제
 
+		List<ReservationEquipment> reservationEquipments =
+				reservationEquipmentRepository.findByReservation_ReservationIdAndStatusNot(
+						reservationId,
+						ReservationStatus.CANCELLED
+				);
+
+		if (!reservationEquipments.isEmpty()) {
+			List<Long> equipmentIds = reservationEquipments.stream()
+					.map(ReservationEquipment::getReservationEquipmentId)
+					.toList();
+
+			cancelEquipments(reservation, equipmentIds, reason);
+		}
 
 		// 상태 이벤트 발행
 		publishReservationStatusChangedEvent(
-				reservation,
-				fromStatus,
-				reservation.getStatus(),
-				reservation.getUser(),
-				reason
+				reservation,//reservation
+				fromStatus, //confrimed
+				reservation.getStatus(),//cancelled
+				reservation.getUser(), //User
+				reason //"cancel"
 		);
-
 	}
 
 	@Override
@@ -696,8 +706,7 @@ public class ReservationServiceImpl implements ReservationService {
 	// 비품 예약 상태 변화 이벤트 발행
 	private void publishEquipmentsReservationStatusChangedEvent(
 			Reservation reservation,
-			TargetType targetType,
-			Long targetId,
+			Long equipmentReservationId,
 			ReservationStatus fromStatus,
 			ReservationStatus toStatus,
 			User changedBy,
@@ -707,10 +716,13 @@ public class ReservationServiceImpl implements ReservationService {
 			return;
 		}
 
+		log.info("비품 예약 상태 변경 이벤트 - equipmentReservationId: {}, {} -> {}",
+				equipmentReservationId, fromStatus, toStatus);
+
 		eventPublisher.publishEvent(new ReservationStatusChangedEvent(
 				reservation,
-				targetType,
-				targetId,
+				TargetType.EQUIPMENT,
+				equipmentReservationId,
 				fromStatus,
 				toStatus,
 				changedBy,
@@ -726,8 +738,8 @@ public class ReservationServiceImpl implements ReservationService {
 			List<Long> reservationEquipmentIds,
 			String reason
 	) {
+		//예약ID 조회
 		Long reservationId = reservation.getReservationId();
-
 
 		log.info("비품 예약 취소 시작 - reservationId: {}, equipmentIds: {}, count: {}",
 				reservationId, reservationEquipmentIds, reservationEquipmentIds.size());
@@ -755,7 +767,7 @@ public class ReservationServiceImpl implements ReservationService {
 				continue;
 			}
 
-			// 현재 상태 저장
+			// 현재 상태 저장 (Confirmed)
 			ReservationStatus fromStatus = reservationEquipment.getStatus();
 
 			// reason 처리
@@ -777,7 +789,6 @@ public class ReservationServiceImpl implements ReservationService {
 			log.debug("3-8. 이벤트 발행 전");
 			publishEquipmentsReservationStatusChangedEvent(
 					reservation,
-					TargetType.EQUIPMENT,
 					reservationEquipment.getReservationEquipmentId(),
 					fromStatus,
 					reservationEquipment.getStatus(),
