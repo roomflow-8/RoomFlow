@@ -12,7 +12,7 @@ import java.util.List;
 
 public interface ReservationService {
     ReservationRoomRes readReservationRoom(Long reservationId);
-    ReservationRoomRes createReservationRoom(CreateReservationRoomReq request) ;
+    ReservationRoomRes createReservationRoomTransactional(CreateReservationRoomReq request) ;
 
     //비품 관련 메서드
     EquipmentReservationRes addEquipmentsToReservation(Long reservationId, AddEquipmentsReq request);
@@ -22,4 +22,5 @@ public interface ReservationService {
     void confirmEquipmentsService(Long reservationId, List<Long> reservationEquipmentIds);
 
     void cancelReservation(Long reservationId, CancelReservationReq request);
+    void expireReservation(Long reservationId);
 }

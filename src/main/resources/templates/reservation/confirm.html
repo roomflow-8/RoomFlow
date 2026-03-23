@@ -13,11 +13,16 @@
 <div th:replace="~{fragments/header :: header}"></div>
 
 <main class="max-w-5xl mx-auto px-8 py-12">
-    <a th:href="@{/}"
-       class="inline-flex items-center gap-2 mb-6 text-gray-600 hover:text-black transition-colors">
-        <span>←</span>
-        <span class="text-[16px]">이전 단계로</span>
-    </a>
+    <form th:action="@{/reservations/{reservationId}/back(reservationId=${reservationId})}"
+          method="post"
+          onsubmit="return confirmGoBack(event, this)">
+
+        <button type="submit"
+                class="inline-flex items-center gap-2 mb-6 text-gray-600 hover:text-black transition-colors">
+            <span>←</span>
+            <span class="text-[16px]">이전 단계로</span>
+        </button>
+    </form>
 
     <h1 class="text-3xl font-bold mb-8">예약 확인</h1>
 
@@ -37,5 +42,6 @@
     </form>
 </main>
 
+<script th:src="@{/js/reservation-confirm.js}"></script>
 </body>
 </html>

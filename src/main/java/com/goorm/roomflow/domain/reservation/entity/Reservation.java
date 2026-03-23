@@ -108,6 +108,17 @@ public class Reservation extends BaseEntity {
 		this.cancelReason = reason;
 	}
 
+	public void expire(String reason) {
+		this.status = ReservationStatus.EXPIRED;
+		this.cancelledAt = LocalDateTime.now();
+		this.cancelReason = reason;
+	}
+
+	public boolean isPendingTimeout(LocalDateTime now, long pendingMinutes) {
+		return this.status == ReservationStatus.PENDING
+				&& this.getCreatedAt().plusMinutes(pendingMinutes).isBefore(now);
+	}
+
 	public void updateTotalAmount(BigDecimal newTotalAmount) {
 		this.totalAmount = newTotalAmount;
 	}
