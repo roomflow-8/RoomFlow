@@ -1,16 +1,17 @@
 package com.goorm.roomflow.domain.reservation.service;
 
 import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
+import com.goorm.roomflow.domain.reservation.dto.request.*;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
-import com.goorm.roomflow.domain.reservation.dto.request.AddEquipmentsReq;
-import com.goorm.roomflow.domain.reservation.dto.request.CancelReservationReq;
-import com.goorm.roomflow.domain.reservation.dto.request.ConfirmReservationReq;
-import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomReq;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
+import com.goorm.roomflow.domain.reservation.entity.Reservation;
 
 import java.util.List;
 
 public interface ReservationService {
+
+    Reservation getReservation(Long reservationId);
+
     ReservationRoomRes readReservationRoom(Long reservationId);
     ReservationRoomRes createReservationRoomTransactional(CreateReservationRoomReq request) ;
 
@@ -23,4 +24,5 @@ public interface ReservationService {
 
     void cancelReservation(Long reservationId, CancelReservationReq request);
     void expireReservation(Long reservationId);
+    void cancelReservationEquipments(Long reservationId, CancelReservationEquipmentsReq request);
 }

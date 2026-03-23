@@ -25,7 +25,7 @@ public interface EquipmentRepository extends JpaRepository<Equipment, Long>, Cus
 	 * 비관적 락으로 비품 조회 (동시성 제어)
 	 */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
-	Optional<Equipment> findByEquipmentId(Long equipmentId);
+	Optional<Equipment> findByEquipmentId(Long equipmentId); //findByEquipmentIdWithLock(Long id) bug_report
 
 	// 👍 이름으로 검색
 	List<Equipment> findByEquipmentNameContaining(String keyword);

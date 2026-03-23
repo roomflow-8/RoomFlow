@@ -1,15 +1,11 @@
 package com.goorm.roomflow.domain.reservation.service;
 
 import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
-import com.goorm.roomflow.domain.reservation.dto.request.EquipmentReservationReq;
+import com.goorm.roomflow.domain.reservation.dto.request.*;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.equipment.entity.Equipment;
 import com.goorm.roomflow.domain.equipment.entity.EquipmentStatus;
 import com.goorm.roomflow.domain.equipment.repository.EquipmentRepository;
-import com.goorm.roomflow.domain.reservation.dto.request.AddEquipmentsReq;
-import com.goorm.roomflow.domain.reservation.dto.request.CancelReservationReq;
-import com.goorm.roomflow.domain.reservation.dto.request.ConfirmReservationReq;
-import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomReq;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationTimeSlot;
 import com.goorm.roomflow.domain.reservation.entity.Reservation;
@@ -45,7 +41,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import static java.util.Collections.min;
 
 @Slf4j
 @Service
@@ -61,6 +56,17 @@ public class ReservationServiceImpl implements ReservationService {
 	private final EquipmentRepository equipmentRepository;
 	private final UserJpaRepository userRepository;
 	private final ApplicationEventPublisher eventPublisher;
+
+	@Override
+	@Transactional(readOnly = true)
+	public Reservation getReservation(Long reservationId) {
+		log.debug("예약 조회 - reservationId: {}", reservationId);
+
+		return reservationRepository.findById(reservationId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+	}
+
+
 	/**
 	 * 회의실 예약 정보를 조회한다.
 	 * - reservationId를 기준으로 Reservation을 조회한 후,
@@ -300,7 +306,7 @@ public class ReservationServiceImpl implements ReservationService {
 					.reservation(reservation)
 					.equipment(equipment)
 					.quantity(equipmentReq.getQuantity())
-					.status(ReservationStatus.PENDING) //TODO: status기본값 PENDING X -> 기본에서 PENDING으로 변경해야함.
+					.status(ReservationStatus.PENDING)
 					.unitPrice(unitPrice)
 					.totalAmount(totalAmount)
 					.build();
@@ -379,21 +385,100 @@ public class ReservationServiceImpl implements ReservationService {
 	}
 
 
-	/* TODO: 2. 비품 예약 private 메서드 */
 	/**
-	 *  비품 예약 확정 private 메서드
+	 * 비품 예약 확정 private 메서드
 	 * - reservationEquipmentIds에 해당하는 비품 예약들을 CONFIRMED로 변경
 	 */
 	private void confirmEquipment(Long reservationId, List<Long> reservationEquipmentIds) {
 		log.info("비품 예약 확정 시작 - reservationId: {}, equipmentIds: {}",
 				reservationId, reservationEquipmentIds);
 
+		// 비품 예약 조회
 		List<ReservationEquipment> reservationEquipments =
 				reservationEquipmentRepository.findAllById(reservationEquipmentIds);
 
+		// 요청한 ID 개수와 조회된 개수 비교
+		if (reservationEquipments.size() != reservationEquipmentIds.size()) {
+			throw new BusinessException(ErrorCode.RESERVATION_EQUIPMENT_NOT_FOUND);
+		}
 
+		for (ReservationEquipment reservationEquipment : reservationEquipments) {
 
+			//  예약 ID 일치 확인 (전달받은 reservationId와 reservationEquipment의 reservationId의 일치여부 확인)
+			if (!reservationEquipment.getReservation().getReservationId().equals(reservationId)) {
+				throw new BusinessException(ErrorCode.INVALID_RESERVATION_EQUIPMENT);
+			}
+
+			// 이미 취소된 비품 예약인지 확인
+			if (reservationEquipment.getStatus() == ReservationStatus.CANCELLED) {
+				throw new BusinessException(ErrorCode.RESERVATION_EQUIPMENT_CANCELLED);
+			}
+
+			// 이미 확정된 경우 스킵
+			if (reservationEquipment.getStatus() == ReservationStatus.CONFIRMED) {
+				log.debug("이미 확정된 비품 예약 - id: {}", reservationEquipment.getReservationEquipmentId());
+				continue;
+			}
+
+			// 재고 재검증 (확정 시점에 다시 확인)**
+			Reservation reservation = reservationEquipment.getReservation(); //이벤트 발행에서 사용
+			List<ReservationRoom> reservationRooms =
+					reservationRoomRepository.findByReservation(reservation);
+
+			List<RoomSlot> roomSlots = reservationRooms.stream()
+					.map(ReservationRoom::getRoomSlot)
+					.toList();
+
+			LocalDateTime startTime = roomSlots.stream()
+					.map(RoomSlot::getSlotStartAt)
+					.min(LocalDateTime::compareTo)
+					.orElseThrow();
+
+			LocalDateTime endTime = roomSlots.stream()
+					.map(RoomSlot::getSlotEndAt)
+					.max(LocalDateTime::compareTo)
+					.orElseThrow();
+
+			validateAvailableStock(
+					reservationEquipment.getEquipment().getEquipmentId(),
+					reservationEquipment.getQuantity(),
+					startTime,
+					endTime
+			);
+
+			//  현재 상태 저장 (fromStatus)
+			ReservationStatus fromStatus = reservationEquipment.getStatus();
+
+			// 상태 변경 (PENDING -> CONFIRMED)
+			reservationEquipment.confirm();
+
+			// 비품 총 예약 건수++ 추가
+			Equipment equipment = reservationEquipment.getEquipment();
+			equipment.incrementReservations();
+
+			// 이벤트 발행
+			publishEquipmentsReservationStatusChangedEvent(
+					reservation,
+					reservationEquipment.getReservationEquipmentId(),  // 비품 예약 ID
+					fromStatus,
+					reservationEquipment.getStatus(),
+					reservation.getUser(),
+					"비품 예약 확정"
+			);
+
+			log.info("비품 예약 확정 완료 - equipmentId: {}, quantity: {}",
+					reservationEquipment.getEquipment().getEquipmentId(),
+					reservationEquipment.getQuantity());
+		}
+
+		// 7. 총액 업데이트
+		Reservation reservation = reservationRepository.findById(reservationId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+		updateReservationTotalAmount(reservation);
+
+		log.info("비품 예약 확정 완료 - count: {}", reservationEquipments.size());
 	}
+
 
 	/**
 	 * 회의실 예약을 취소한다.
@@ -437,15 +522,51 @@ public class ReservationServiceImpl implements ReservationService {
 
 		// TODO: 비품이 있는경우 함께 삭제
 
+		List<ReservationEquipment> reservationEquipments =
+				reservationEquipmentRepository.findByReservation_ReservationIdAndStatusNot(
+						reservationId,
+						ReservationStatus.CANCELLED
+				);
+
+		if (!reservationEquipments.isEmpty()) {
+			List<Long> equipmentIds = reservationEquipments.stream()
+					.map(ReservationEquipment::getReservationEquipmentId)
+					.toList();
+
+			cancelEquipments(reservation, equipmentIds, reason);
+		}
+
 		// 상태 이벤트 발행
 		publishReservationStatusChangedEvent(
-				reservation,
-				fromStatus,
-				reservation.getStatus(),
-				reservation.getUser(),
-				reason
+				reservation,//reservation
+				fromStatus, //confrimed
+				reservation.getStatus(),//cancelled
+				reservation.getUser(), //User
+				reason //"cancel"
 		);
+	}
 
+	@Override
+	@Transactional
+	public void cancelReservationEquipments(Long reservationId, CancelReservationEquipmentsReq request) {
+		try {
+			//예약 조회
+			Reservation reservation = getReservation(reservationId);
+			log.debug("reservationServiceImpl - 예약 조회 완료 - status: {}", reservation.getStatus());
+
+			// 취소/만료된 예약은 비품 취소 불가
+			if (reservation.getStatus() == ReservationStatus.CANCELLED || reservation.getStatus() == ReservationStatus.EXPIRED) {
+				throw new BusinessException(ErrorCode.RESERVATION_CANCELLED);
+			}
+			log.debug("cancelEquipments 호출 전");
+			cancelEquipments(reservation, request.reservationEquipmentIds(), request.reason());
+			log.debug("cancelEquipments 호출 후");
+		} catch (Exception e) {
+			log.error("비품 예약 취소 실패 - reservationId: {}, error: {}",
+					reservationId, e.getMessage(), e);
+			throw e;
+
+		}
 	}
 
 	/**
@@ -555,7 +676,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 		/*
 		260322 ES Equipment Repository와 연결
-		Equipment equipment = equipmentRepository.findByEquipmentIdWithLock(equipmentId)
+		Equipment equipment = equipmentRepository.findByEquipmentId(equipmentId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
 		 */
 
@@ -635,4 +756,112 @@ public class ReservationServiceImpl implements ReservationService {
 				reason
 		));
 	}
+
+
+	// 비품 예약 상태 변화 이벤트 발행
+	private void publishEquipmentsReservationStatusChangedEvent(
+			Reservation reservation,
+			Long equipmentReservationId,
+			ReservationStatus fromStatus,
+			ReservationStatus toStatus,
+			User changedBy,
+			String reason
+	) {
+		if (fromStatus == toStatus) {
+			return;
+		}
+
+		log.info("비품 예약 상태 변경 이벤트 - equipmentReservationId: {}, {} -> {}",
+				equipmentReservationId, fromStatus, toStatus);
+
+		eventPublisher.publishEvent(new ReservationStatusChangedEvent(
+				reservation,
+				TargetType.EQUIPMENT,
+				equipmentReservationId,
+				fromStatus,
+				toStatus,
+				changedBy,
+				reason
+		));
+	}
+
+	/**
+	 * 비품 취소 private 메서드
+	 */
+	private void cancelEquipments(
+			Reservation reservation,
+			List<Long> reservationEquipmentIds,
+			String reason
+	) {
+		//예약ID 조회
+		Long reservationId = reservation.getReservationId();
+
+		log.info("비품 예약 취소 시작 - reservationId: {}, equipmentIds: {}, count: {}",
+				reservationId, reservationEquipmentIds, reservationEquipmentIds.size());
+
+		//비품 예약 조회
+		List<ReservationEquipment> reservationEquipments = reservationEquipmentRepository.findAllById(reservationEquipmentIds);
+		log.debug("1. 비품 예약 조회 완료 - count: {}", reservationEquipments.size());
+
+		if (reservationEquipments.size() != reservationEquipmentIds.size()) {
+			throw new BusinessException(ErrorCode.RESERVATION_EQUIPMENT_NOT_FOUND);
+		}
+
+		for (ReservationEquipment reservationEquipment : reservationEquipments) {
+			log.debug("3-1. 처리 중 - id: {}", reservationEquipment.getReservationEquipmentId());
+
+			// 예약 ID 일치 확인
+			if (!reservationEquipment.getReservation().getReservationId().equals(reservationId)) {
+				throw new BusinessException(ErrorCode.INVALID_RESERVATION_EQUIPMENT);
+			}
+
+			// 이미 취소된 비품 예약인지 확인
+			if (reservationEquipment.getStatus() == ReservationStatus.CANCELLED) {
+				log.debug("이미 취소된 비품 예약 - id: {}",
+						reservationEquipment.getReservationEquipmentId());
+				continue;
+			}
+
+			// 현재 상태 저장 (Confirmed)
+			ReservationStatus fromStatus = reservationEquipment.getStatus();
+
+			// reason 처리
+			String finalReason = (reason != null && !reason.isBlank())
+					? reason
+					: "사용자 취소";
+
+			//  상태 변경 (cancelledAt 자동 설정)
+			log.debug("3-6. 상태 변경 - cancel() 호출");
+			reservationEquipment.cancel(finalReason);
+
+			// 확정된 비품이었다면 예약 건수 감소
+			if (fromStatus == ReservationStatus.CONFIRMED) {
+				Equipment equipment = reservationEquipment.getEquipment();
+				equipment.decrementReservations();
+			}
+
+			// 이벤트 발행
+			log.debug("3-8. 이벤트 발행 전");
+			publishEquipmentsReservationStatusChangedEvent(
+					reservation,
+					reservationEquipment.getReservationEquipmentId(),
+					fromStatus,
+					reservationEquipment.getStatus(),
+					reservation.getUser(),
+					finalReason
+			);
+
+			log.info("비품 예약 취소 완료 - equipmentId: {}, {} -> CANCELLED",
+					reservationEquipment.getEquipment().getEquipmentId(),
+					fromStatus);
+		}
+
+		// 총액 업데이트
+		updateReservationTotalAmount(reservation);
+
+		log.info("비품 예약 취소 완료 - count: {}", reservationEquipments.size());
+
+	}
 }
+
+
