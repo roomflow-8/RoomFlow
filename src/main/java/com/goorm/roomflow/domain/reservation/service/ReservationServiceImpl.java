@@ -2,6 +2,7 @@ package com.goorm.roomflow.domain.reservation.service;
 
 import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
 import com.goorm.roomflow.domain.reservation.dto.request.*;
+import com.goorm.roomflow.domain.reservation.dto.response.EquipmentItem;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.equipment.entity.Equipment;
 import com.goorm.roomflow.domain.equipment.entity.EquipmentStatus;
@@ -79,20 +80,21 @@ public class ReservationServiceImpl implements ReservationService {
 	@Transactional(readOnly = true)
 	public ReservationRoomRes readReservationRoom(Long userId, Long reservationId) {
 
-		// 회원 조회
+		// 1. 회원 조회
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-		// 1. 예약 조회
+		// 2. 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
+		// 3. 권한 검증
 		if (user.getRole().equals(UserRole.USER)
 				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
 			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
 		}
 
-		// 2. 회의실 예약 조회
+		// 4. 회의실 예약 조회
 		List<ReservationRoom> reservationRooms = reservationRoomRepository.findByReservation(reservation);
 
 		if (reservationRooms.isEmpty()) {
@@ -101,7 +103,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 		MeetingRoom meetingRoom = reservation.getMeetingRoom();
 
-		// 3. 시간 조회
+		// 5. 시간 조회
 		List<RoomSlot> roomSlots = reservationRooms.stream()
 				.map(ReservationRoom::getRoomSlot)
 				.sorted(Comparator.comparing(RoomSlot::getSlotStartAt))
@@ -110,11 +112,35 @@ public class ReservationServiceImpl implements ReservationService {
 		LocalDate reservationDate = roomSlots.getFirst().getSlotStartAt().toLocalDate();
 		List<ReservationTimeSlot> reservationTimeSlots = makeReservationTimeSlot(roomSlots);
 
+		// 6. 비품 예약 조회
+		List<EquipmentItem> equipmentItems = reservationEquipmentRepository
+				.findByReservation_ReservationIdAndStatus(reservationId, ReservationStatus.PENDING)
+				.stream()
+				.map(EquipmentItem::from)
+				.toList();
+
+		// 금액 계산
+		BigDecimal roomAmount = calcTotalAmount(meetingRoom.getHourlyPrice(), roomSlots);
+
+		BigDecimal equipmentAmount = equipmentItems.stream()
+				.map(EquipmentItem::totalAmount)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+
+		BigDecimal totalAmount = equipmentAmount;
+
+		if(reservation.getStatus() == ReservationStatus.PENDING) {
+			totalAmount = totalAmount.add(roomAmount);
+		}
+
 		return reservationRoomMapper.toReservationRoomRes(
 				reservation,
 				meetingRoom,
 				reservationTimeSlots,
-				reservationDate
+				equipmentItems,
+				reservationDate,
+				roomAmount,
+				equipmentAmount,
+				totalAmount
 		);
 	}
 
@@ -219,7 +245,11 @@ public class ReservationServiceImpl implements ReservationService {
 				reservation,
 				meetingRoom,
 				reservationTimeSlots,
-				reservationDate
+				null,
+				reservationDate,
+				reservation.getTotalAmount(),
+                BigDecimal.valueOf(0),
+				reservation.getTotalAmount()
 		);
 
 	}
@@ -363,20 +393,22 @@ public class ReservationServiceImpl implements ReservationService {
 			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
 		}
 
-		// 회의실 예약 확정
-		reservation.confirm(request.memo());
+		if(reservation.getStatus() == ReservationStatus.PENDING) {
+			// 회의실 예약 확정
+			reservation.confirm(request.memo());
 
-		// 회의실 예약 총 횟수 증가
-		reservation.getMeetingRoom().incrementReservations();
+			// 회의실 예약 총 횟수 증가
+			reservation.getMeetingRoom().incrementReservations();
 
-		// 이벤트 발행
-		publishReservationStatusChangedEvent(
-				reservation,
-				fromStatus,
-				reservation.getStatus(),
-				user,
-				request.memo()
-		);
+			// 이벤트 발행
+			publishReservationStatusChangedEvent(
+					reservation,
+					fromStatus,
+					reservation.getStatus(),
+					user,
+					request.memo()
+			);
+		}
 
 		// 비품 예약이 있으면 함께 확정
 		if (request.reservationEquipmentIds() != null && !request.reservationEquipmentIds().isEmpty()) {
