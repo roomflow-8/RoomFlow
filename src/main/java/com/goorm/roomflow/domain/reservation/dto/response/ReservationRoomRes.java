@@ -1,5 +1,6 @@
 package com.goorm.roomflow.domain.reservation.dto.response;
 
+import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
 import lombok.Builder;
 
 import java.math.BigDecimal;
@@ -15,7 +16,11 @@ public record ReservationRoomRes (
         String roomName,
         LocalDate reservationDate,
         int capacity,
+        ReservationStatus reservationStatus,
         List<ReservationTimeSlot> reservationTimeSlots,
+        BigDecimal roomAmount,
+        List<EquipmentItem> equipments,
+        BigDecimal equipmentAmount,
         BigDecimal totalAmount
 ) {
     public String priceText() {

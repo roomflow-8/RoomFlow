@@ -13,7 +13,9 @@
 <div th:replace="~{fragments/header :: header}"></div>
 
 <main class="max-w-5xl mx-auto px-8 py-12">
-    <form th:action="@{/reservations/{reservationId}/back(reservationId=${reservationId})}"
+    <form th:action="${hasEquipments}
+                    ? @{/reservations/{reservationId}/back/equipment(reservationId=${reservationRoom.reservationId})}
+                    : @{/reservations/{reservationId}/back/room(reservationId=${reservationRoom.reservationId})}"
           method="post"
           onsubmit="return confirmGoBack(event, this)">
 
@@ -31,13 +33,19 @@
 
             <div class="lg:col-span-2 space-y-6">
                 <div th:replace="~{reservation/fragments/room-info :: roomInfo(${reservationRoom})}"></div>
-                <div th:replace="~{reservation/fragments/purpose :: purpose}"></div>
+
+                <th:block th:if="${reservationRoom.reservationStatus != 'CONFIRMED'}">
+                    <div th:replace="~{reservation/fragments/purpose :: purpose}"></div>
+                </th:block>
+
+                <th:block th:if="${hasEquipments}">
+                    <div th:replace="~{reservation/fragments/equipment-info :: equipmentInfo(${reservationRoom})}"></div>
+                </th:block>
             </div>
 
             <div class="lg:col-span-1">
                 <div th:replace="~{reservation/fragments/summary :: summary(${reservationRoom})}"></div>
             </div>
-
         </div>
     </form>
 </main>

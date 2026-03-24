@@ -49,6 +49,7 @@ public class ReservationController {
         ReservationRoomRes reservationRoomRes = reservationService.readReservationRoom(loginUser.getUserId(), reservationId);
 
         model.addAttribute("reservationRoom", reservationRoomRes);
+        model.addAttribute("hasEquipments", reservationRoomRes.equipments() != null && !reservationRoomRes.equipments().isEmpty());
         return "reservation/confirm";
     }
 
@@ -77,10 +78,10 @@ public class ReservationController {
     }
 
     /**
-     * 회의실 예약 만료 처리
+     * 뒤로 가기 기능 -> 회의실 예약 만료 처리
      */
-    @PostMapping("/{reservationId}/back")
-    public String goBackAndExpire(
+    @PostMapping("/{reservationId}/back/room")
+    public String backFromRoom(
             @SessionAttribute(name="loginUser", required=false) UserTO loginUser,
             @PathVariable Long reservationId) {
         reservationService.expireReservation(loginUser.getUserId(), reservationId);
