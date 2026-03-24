@@ -66,7 +66,6 @@ public class ReservationServiceImpl implements ReservationService {
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 	}
 
-
 	/**
 	 * 회의실 예약 정보를 조회한다.
 	 * - reservationId를 기준으로 Reservation을 조회한 후,

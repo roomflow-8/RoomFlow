@@ -107,9 +107,6 @@ public class ReservationRestController {
         return ApiResponse.success(SuccessCode.RESERVATION_CANCELLED);
     }
 
-    /*
-    기존 예약 건수에 대한 비품 예약 확정
-     */
     @Operation(summary = "회의실 기존 예약 건에 대한 비품 예약 확정")
     @PostMapping("/{reservationId}/equipments/confirm")
     public ResponseEntity<ApiResponse<Void>> confirmReservationEquipments(@PathVariable Long reservationId, @RequestBody @Valid ConfirmReservationReq request) {
@@ -121,10 +118,6 @@ public class ReservationRestController {
         return ApiResponse.success(SuccessCode.EQUIPMENT_ADDED);
     }
 
-    /*
-    기존 예약 건수에 대한 비품 예약 취소
-
-     */
     @Operation(summary = "회의실 기존 예약 건에 대한 비품 예약 취소")
     @PostMapping("/{reservationId}/equipments/cancel")
     public ResponseEntity<ApiResponse<Void>> cancelReservationEquipments(@PathVariable Long reservationId, @RequestBody @Valid CancelReservationEquipmentsReq request) {

@@ -111,7 +111,7 @@
                     </div>
                     <div class="ml-4">
                         <a th:if="${activeTab == 'upcoming'}"
-                           th:href="@{/equipment-list(reservationId=${reservation.id})}"
+                           th:href="@{/reservations(reservationId=${reservation.id})}"
                            th:classappend="${reservation.hasEquipment} ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50' : 'bg-slate-900 text-white hover:bg-slate-800 border-slate-900'"
                            class="inline-flex items-center justify-center h-[40px] px-4 rounded-md border text-sm font-medium transition-colors">
                             비품 추가하기
