@@ -24,12 +24,12 @@ import com.goorm.roomflow.domain.room.entity.RoomStatus;
 import com.goorm.roomflow.domain.room.repository.MeetingRoomRepository;
 import com.goorm.roomflow.domain.room.repository.RoomSlotRepository;
 import com.goorm.roomflow.domain.user.entity.User;
+import com.goorm.roomflow.domain.user.entity.UserRole;
 import com.goorm.roomflow.domain.user.repository.UserJpaRepository;
 import com.goorm.roomflow.global.code.ErrorCode;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RedissonClient;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,11 +77,20 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Override
 	@Transactional(readOnly = true)
-	public ReservationRoomRes readReservationRoom(Long reservationId) {
+	public ReservationRoomRes readReservationRoom(Long userId, Long reservationId) {
+
+		// 회원 조회
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 1. 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+
+		if (user.getRole().equals(UserRole.USER)
+				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
+		}
 
 		// 2. 회의실 예약 조회
 		List<ReservationRoom> reservationRooms = reservationRoomRepository.findByReservation(reservation);
@@ -124,10 +133,10 @@ public class ReservationServiceImpl implements ReservationService {
 	 * @throws BusinessException 회의실 또는 슬롯이 존재하지 않거나 이미 예약된 경우 발생
 	 */
 	@Transactional
-	public ReservationRoomRes createReservationRoomTransactional(CreateReservationRoomReq request) {
+	public ReservationRoomRes createReservationRoomTransactional(Long userId, CreateReservationRoomReq request) {
 
-		// 임시 데이터
-		User user = userRepository.findById(1L).get();
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 1. 회의실 조회
 		MeetingRoom meetingRoom = meetingRoomRepository.findById(request.roomId())
@@ -167,6 +176,7 @@ public class ReservationServiceImpl implements ReservationService {
 		// 4. 금액 계산
 		BigDecimal totalAmount = calcTotalAmount(meetingRoom.getHourlyPrice(), roomSlots);
 
+		log.info("예약 생성");
 		// 5. 예약 생성
 		Reservation reservation = new Reservation(
 				user,
@@ -175,6 +185,8 @@ public class ReservationServiceImpl implements ReservationService {
 				totalAmount);
 
 		reservationRepository.save(reservation);
+
+		log.info("예약 History");
 
 		// 5-1. 예약 history 발행
 		publishReservationStatusChangedEvent(
@@ -335,13 +347,21 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Override
 	@Transactional
-	public void confirmReservation(Long reservationId, ConfirmReservationReq request) {
+	public void confirmReservation(Long userId, Long reservationId, ConfirmReservationReq request) {
+
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 회의실 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
 		ReservationStatus fromStatus = reservation.getStatus();
+
+		if (user.getRole().equals(UserRole.USER)
+				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
+		}
 
 		// 회의실 예약 확정
 		reservation.confirm(request.memo());
@@ -354,7 +374,7 @@ public class ReservationServiceImpl implements ReservationService {
 				reservation,
 				fromStatus,
 				reservation.getStatus(),
-				reservation.getUser(),
+				user,
 				request.memo()
 		);
 
@@ -488,13 +508,19 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Override
 	@Transactional
-	public void cancelReservation(Long reservationId, CancelReservationReq request) {
+	public void cancelReservation(Long userId, Long reservationId, CancelReservationReq request) {
+
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
-		// TODO: 예약자 검증
+		if (user.getRole().equals(UserRole.USER)
+				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
+		}
 
 		ReservationStatus fromStatus = reservation.getStatus();
 
@@ -540,7 +566,7 @@ public class ReservationServiceImpl implements ReservationService {
 				reservation,//reservation
 				fromStatus, //confrimed
 				reservation.getStatus(),//cancelled
-				reservation.getUser(), //User
+				user, //User
 				reason //"cancel"
 		);
 	}
@@ -577,14 +603,19 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Override
 	@Transactional
-	public void expireReservation(Long reservationId) {
+	public void expireReservation(Long userId, Long reservationId) {
+
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
-		// TODO: 예약자 검증
-
+		if (user.getRole().equals(UserRole.USER)
+				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
+		}
 		ReservationStatus fromStatus = reservation.getStatus();
 
 		if(fromStatus == ReservationStatus.PENDING) {
@@ -610,7 +641,7 @@ public class ReservationServiceImpl implements ReservationService {
 					reservation,
 					fromStatus,
 					reservation.getStatus(),
-					reservation.getUser(),
+					user,
 					reason
 			);
 		}

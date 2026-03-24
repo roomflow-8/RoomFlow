@@ -3,6 +3,7 @@ package com.goorm.roomflow.domain.reservation.service;
 import com.goorm.roomflow.domain.reservation.dto.request.CreateReservationRoomReq;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.repository.ReservationRepository;
+import com.goorm.roomflow.domain.user.entity.User;
 import com.goorm.roomflow.global.code.ErrorCode;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,7 @@ public class ReservationLockFacade {
     private final RedissonClient redissonClient;
     private final ReservationService reservationService;
 
-    public ReservationRoomRes createReservationRoom(CreateReservationRoomReq request) {
+    public ReservationRoomRes createReservationRoom(Long userId, CreateReservationRoomReq request) {
 
         List<String> lockKeys = request.roomSlotIds().stream()
                 .sorted()
@@ -37,15 +38,14 @@ public class ReservationLockFacade {
         boolean acquired = false;
 
         try {
-            // 최대 10초 대기, 락 획득 후 30초 뒤 자동 해제
-            acquired = multiLock.tryLock(0, 30, TimeUnit.SECONDS);
+            // 0초 대기, 트랜잭션 끝날 때까지 대기
+            acquired = multiLock.tryLock(0, TimeUnit.SECONDS);
 
             if (!acquired) {
-                log.info("락 흭득 실패");
                 throw new BusinessException(ErrorCode.ALREADY_PROCESSING_RESERVATION);
             }
 
-            return reservationService.createReservationRoomTransactional(request);
+            return reservationService.createReservationRoomTransactional(userId, request);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
