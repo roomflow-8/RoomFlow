@@ -16,7 +16,6 @@ import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -92,10 +91,10 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 										.where(
 												reservationEquipment.equipment.equipmentId.eq(equipment.equipmentId),
 												reservation.status.ne(ReservationStatus.CANCELLED),
-												roomSlot.slotStartAt.between(
+												/*roomSlot.slotStartAt.between(
 														date.atStartOfDay(),
 														date.plusDays(1).atStartOfDay()
-												),
+												),*/
 												roomSlot.slotStartAt.lt(reservationInfo.endAt()),
 												roomSlot.slotEndAt.gt(reservationInfo.startAt())
 										)
