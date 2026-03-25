@@ -35,11 +35,20 @@ public class UserController {
 
     // 내 예약 목록 페이지 렌더링
     @GetMapping("/reservationlist")
-    public String reservationList(HttpSession session) {
+    public String reservationList(HttpSession session,
+                                  @RequestParam(defaultValue = "upcoming") String tab,
+                                  @RequestParam(required = false) String startDate,
+                                  @RequestParam(required = false) String endDate,
+                                  Model model) {
         UserTO loginUser = (UserTO) session.getAttribute("loginUser");
         if (loginUser == null) {
             return "redirect:/users/login";
         }
+        model.addAttribute("reservations", userService.getReservationsByUserId(loginUser.getUserId(), tab, startDate, endDate));
+        model.addAttribute("activeTab", tab);
+        model.addAttribute("startDate", startDate);
+        model.addAttribute("endDate", endDate);
+        model.addAttribute("loginUser", loginUser);
         return "user/UserReservationList";
     }
 

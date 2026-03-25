@@ -22,4 +22,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("status") ReservationStatus status,
             @Param("threshold") LocalDateTime threshold
     );
+
+    @Query("select r from Reservation r join fetch r.meetingRoom where r.user.userId = :userId order by r.createdAt desc")
+    List<Reservation> findByUserUserIdWithRoom(@Param("userId") Long userId);
 }
