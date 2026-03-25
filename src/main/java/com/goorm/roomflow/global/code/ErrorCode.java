@@ -22,6 +22,7 @@ public enum ErrorCode {
 	ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "ROOM_001", "회의실을 찾을 수 없습니다."),
 	ROOM_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "ROOM_002", "예약이 가능한 회의실이 아닙니다."),
 	ROOM_SLOT_NOT_FOUND(HttpStatus.NOT_FOUND, "ROOM_003", "예약 가능 시간을 찾을 수 없습니다."),
+	POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_001", "정책 정보를 찾을 수 없습니다."),
 
 	// 예약
 	RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "RESERVATION_001", "예약을 찾을 수 없습니다."),
@@ -45,6 +46,7 @@ public enum ErrorCode {
 
 	// 권한
 	NO_PERMISSION(HttpStatus.FORBIDDEN, "AUTH_001", "권한이 없습니다.");
+
 
 	private final HttpStatus status;
 	private final String code;
