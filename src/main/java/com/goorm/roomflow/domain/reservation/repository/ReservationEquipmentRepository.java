@@ -2,6 +2,7 @@ package com.goorm.roomflow.domain.reservation.repository;
 
 import com.goorm.roomflow.domain.reservation.entity.ReservationEquipment;
 import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -38,6 +39,12 @@ public interface ReservationEquipmentRepository extends JpaRepository<Reservatio
 	 * 예약 ID로 비품 목록 조회 (특정 상태 제외)
 	 */
 	List<ReservationEquipment> findByReservation_ReservationIdAndStatusNot(
+			Long reservationId,
+			ReservationStatus status
+	);
+
+	@EntityGraph(attributePaths = {"equipment"})
+	List<ReservationEquipment> findByReservation_ReservationIdAndStatus(
 			Long reservationId,
 			ReservationStatus status
 	);

@@ -9,6 +9,8 @@ import com.goorm.roomflow.domain.reservation.entity.Reservation;
 import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
 import com.goorm.roomflow.domain.reservation.service.ReservationLockFacade;
 import com.goorm.roomflow.domain.reservation.service.ReservationService;
+import com.goorm.roomflow.domain.user.dto.UserTO;
+import com.goorm.roomflow.domain.user.entity.User;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,21 +31,32 @@ public class ReservationController {
     private final ReservationLockFacade reservationLockFacade;
     private final EquipmentService equipmentService;
 
+    /**
+     * 회의실 예약 생성 처리
+     */
     @PostMapping
-    public String createRoomReservation(@ModelAttribute CreateReservationRoomReq request) {
+    public String createRoomReservation(
+            @SessionAttribute(name="loginUser", required=false) UserTO loginUser,
+            @ModelAttribute CreateReservationRoomReq request) {
 
-        Long reservationId = reservationLockFacade.createReservationRoom(request).reservationId();
+        Long reservationId = reservationLockFacade.createReservationRoom(loginUser.getUserId(), request).reservationId();
 
         return "redirect:/reservations/rooms/" + reservationId;
     }
 
+    /**
+     * 회의실 예약 확인 페이지 조회
+     */
     @GetMapping("/rooms/{reservationId}")
-    public String reservationPage(@PathVariable("reservationId") Long reservationId,
-                                  Model model) {
+    public String reservationPage(
+            @SessionAttribute(name="loginUser", required=false) UserTO loginUser,
+            @PathVariable("reservationId") Long reservationId,
+            Model model) {
 
-        ReservationRoomRes reservationRoomRes = reservationService.readReservationRoom(reservationId);
+        ReservationRoomRes reservationRoomRes = reservationService.readReservationRoom(loginUser.getUserId(), reservationId);
 
         model.addAttribute("reservationRoom", reservationRoomRes);
+        model.addAttribute("hasEquipments", reservationRoomRes.equipments() != null && !reservationRoomRes.equipments().isEmpty());
         return "reservation/confirm";
     }
 
@@ -158,15 +171,18 @@ public class ReservationController {
     }
 
 
-
+    /**
+     * 회의실 예약 확정 처리
+     */
     @PostMapping("/{reservationId}/confirm")
     public String confirmReservation(
+            @SessionAttribute(name="loginUser", required=false) UserTO loginUser,
             @PathVariable Long reservationId,
             @ModelAttribute ConfirmReservationReq request,
             RedirectAttributes redirectAttributes
     ) {
         try {
-            reservationService.confirmReservation(reservationId, request);
+            reservationService.confirmReservation(loginUser.getUserId(), reservationId, request);
             redirectAttributes.addFlashAttribute("alertType", "success");
             redirectAttributes.addFlashAttribute("message", "예약이 확정되었습니다.");
 
@@ -179,9 +195,14 @@ public class ReservationController {
         }
     }
 
-    @PostMapping("/{reservationId}/back")
-    public String goBackAndExpire(@PathVariable Long reservationId) {
-        reservationService.expireReservation(reservationId);
+    /**
+     * 뒤로 가기 기능 -> 회의실 예약 만료 처리
+     */
+    @PostMapping("/{reservationId}/back/room")
+    public String backFromRoom(
+            @SessionAttribute(name="loginUser", required=false) UserTO loginUser,
+            @PathVariable Long reservationId) {
+        reservationService.expireReservation(loginUser.getUserId(), reservationId);
         return "redirect:/rooms";
     }
 }
