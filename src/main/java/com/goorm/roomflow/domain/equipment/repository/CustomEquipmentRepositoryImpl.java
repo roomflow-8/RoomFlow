@@ -65,6 +65,14 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 		return reservationInfo;
 	}
 
+	/*
+재고계산 서브쿼리 where 조건 수정 확인.
+수정 이전: reservation.status.ne(ReservationStatus.CANCELLED),
+	->
+수정 이후:
+reservationEquipment.status.in(ReservationStatus.PENDING, ReservationStatus.CONFIRMED),
+reservation.status.notIn(ReservationStatus.CANCELLED, ReservationStatus.EXPIRED),
+	 */
 	private List<EquipmentAvailabilityDto> getAvailableEquipments(ReservationInfoDto reservationInfo) {
 
 		QEquipment equipment = QEquipment.equipment;
@@ -86,7 +94,8 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 										.join(reservationEquipment.reservation, reservation)
 										.where(
 												reservationEquipment.equipment.equipmentId.eq(equipment.equipmentId),
-												reservation.status.ne(ReservationStatus.CANCELLED),
+												reservationEquipment.status.in(ReservationStatus.PENDING, ReservationStatus.CONFIRMED),
+												reservation.status.notIn(ReservationStatus.CANCELLED, ReservationStatus.EXPIRED),
 
 												JPAExpressions
 														.selectOne()
@@ -95,7 +104,7 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 														.where(
 																reservationRoom.reservation.eq(reservation),
 
-																// 시간 겹침 조건
+																// 시간 겹침 조건 //1건의 예약에서 여러 타임의 slot을 예약시 1번만 계산.
 																roomSlot.slotStartAt.lt(reservationInfo.endAt()),
 																roomSlot.slotEndAt.gt(reservationInfo.startAt())
 														)
