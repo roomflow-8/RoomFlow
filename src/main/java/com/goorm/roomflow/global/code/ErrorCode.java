@@ -15,10 +15,14 @@ public enum ErrorCode {
 	NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON_004", "리소스를 찾을 수 없습니다."),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_005", "서버 오류"),
 
+	// 사용자
+	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_001", "사용자를 찾을 수 없습니다."),
+
 	// 회의실
 	ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "ROOM_001", "회의실을 찾을 수 없습니다."),
 	ROOM_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "ROOM_002", "예약이 가능한 회의실이 아닙니다."),
 	ROOM_SLOT_NOT_FOUND(HttpStatus.NOT_FOUND, "ROOM_003", "예약 가능 시간을 찾을 수 없습니다."),
+	POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_001", "정책 정보를 찾을 수 없습니다."),
 
 	// 예약
 	RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "RESERVATION_001", "예약을 찾을 수 없습니다."),
@@ -33,8 +37,8 @@ public enum ErrorCode {
 	RESERVATION_EQUIPMENT_NOT_FOUND(HttpStatus.BAD_REQUEST, "RESERVATION_009", "비품 예약을 조회할 수 없습니다."),
 	INVALID_RESERVATION_EQUIPMENT(HttpStatus.BAD_REQUEST, "RESERVATION_010", "유효하지 않은 예약ID 입니다."),
 	RESERVATION_EQUIPMENT_CANCELLED(HttpStatus.BAD_REQUEST, "RESERVATION_011", "이미 취소된 비품 예약입니다."),
-  ALREADY_PROCESSING_RESERVATION(HttpStatus.CONFLICT, "RESERVATION_012", "이미 해당 시간대 예약이 진행 중입니다."),
-
+  	ALREADY_PROCESSING_RESERVATION(HttpStatus.CONFLICT, "RESERVATION_012", "이미 해당 시간대 예약이 진행 중입니다."),
+	RESERVATION_FORBIDDEN(HttpStatus.FORBIDDEN, "RESERVATION_013", "해당 예약에 대한 권한이 없습니다."),
 	// 비품
 	EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EQUIPMENT_001", "비품이 존재하지 않습니다."),
 	EQUIPMENT_OUT_OF_STOCK(HttpStatus.CONFLICT, "EQUIPMENT_002", "비품 재고가 부족합니다."),
@@ -42,6 +46,7 @@ public enum ErrorCode {
 
 	// 권한
 	NO_PERMISSION(HttpStatus.FORBIDDEN, "AUTH_001", "권한이 없습니다.");
+
 
 	private final HttpStatus status;
 	private final String code;

@@ -6,9 +6,17 @@
     <div class="px-6 py-6">
         <div class="space-y-4">
             <div class="space-y-2">
-                <div class="flex justify-between text-sm">
+                <div th:if="${reservationRoom.reservationStatus.name() != 'CONFIRMED'}"
+                     class="flex justify-between text-sm">
                     <span class="text-gray-600">회의실 이용료</span>
-                    <span th:text="${reservationRoom.priceText()}"></span>
+                    <span th:text="|${#numbers.formatInteger(reservationRoom.roomAmount, 0, 'COMMA')}원|"></span>
+                </div>
+
+                <div th:if="${hasEquipments}"
+                     class="flex justify-between text-sm">
+                    <span class="text-gray-600">총 비품 대여료</span>
+                    <span th:text="|${#numbers.formatInteger(reservationRoom.equipmentAmount, 0, 'COMMA')}원|">
+                    </span>
                 </div>
             </div>
 
@@ -17,11 +25,12 @@
             <div class="flex justify-between items-center">
                 <span class="font-bold text-lg">총 금액</span>
                 <span class="font-bold text-2xl text-blue-600"
-                      th:text="${reservationRoom.priceText()}"></span>
+                      th:text="|${#numbers.formatInteger(reservationRoom.totalAmount, 0, 'COMMA')}원|"></span>
             </div>
 
             <div class="space-y-2">
-                <a th:href="@{/equipment-list/{reservationId}/equipments(reservationId=${reservationRoom.reservationId})}"
+                <a th:if="${!hasEquipments}"
+                   th:href="@{/reservations/{reservationId}/equipments(reservationId=${reservationRoom.reservationId})}"
                    class="w-full h-12 text-base border rounded-md flex items-center justify-center hover:bg-gray-50">
                     비품 추가하기
                 </a>

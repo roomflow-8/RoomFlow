@@ -19,6 +19,7 @@ public enum SuccessCode {
 
     // 회의실 조회
     ROOM_SUCCESS(HttpStatus.OK, "ROOM_001", "회의실 조회 성공"),
+    ROOMSLOT_CREATED(HttpStatus.CREATED, "ROOM_002", "시간 생성 성공"),
 
     // 예약
     RESERVATION_SUCCESS(HttpStatus.OK, "RESERVATION_001", "예약 조회 성공"),

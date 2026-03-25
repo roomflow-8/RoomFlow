@@ -25,7 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ReservationExpirationScheduler {
 
-    private static final long PENDING_MINUTES = 5L;
+    private static final long PENDING_MINUTES = 10L;
 
     private final ReservationRepository reservationRepository;
     private final ReservationRoomRepository reservationRoomRepository;
@@ -37,7 +37,7 @@ public class ReservationExpirationScheduler {
     public void expirePendingReservations() {
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(PENDING_MINUTES);
 
-        User admin = userRepository.findById(3L).get();
+        User admin = userRepository.findById(1L).get();
 
         List<Reservation> expiredReservations =
                 reservationRepository.findExpiredPendingReservations(

@@ -2,6 +2,7 @@ package com.goorm.roomflow.domain.reservation.service;
 
 import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
 import com.goorm.roomflow.domain.reservation.dto.request.*;
+import com.goorm.roomflow.domain.reservation.dto.response.EquipmentItem;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.equipment.entity.Equipment;
 import com.goorm.roomflow.domain.equipment.entity.EquipmentStatus;
@@ -24,12 +25,12 @@ import com.goorm.roomflow.domain.room.entity.RoomStatus;
 import com.goorm.roomflow.domain.room.repository.MeetingRoomRepository;
 import com.goorm.roomflow.domain.room.repository.RoomSlotRepository;
 import com.goorm.roomflow.domain.user.entity.User;
+import com.goorm.roomflow.domain.user.entity.UserRole;
 import com.goorm.roomflow.domain.user.repository.UserJpaRepository;
 import com.goorm.roomflow.global.code.ErrorCode;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RedissonClient;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,7 +67,6 @@ public class ReservationServiceImpl implements ReservationService {
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 	}
 
-
 	/**
 	 * 회의실 예약 정보를 조회한다.
 	 * - reservationId를 기준으로 Reservation을 조회한 후,
@@ -78,13 +78,23 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Override
 	@Transactional(readOnly = true)
-	public ReservationRoomRes readReservationRoom(Long reservationId) {
+	public ReservationRoomRes readReservationRoom(Long userId, Long reservationId) {
 
-		// 1. 예약 조회
+		// 1. 회원 조회
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+		// 2. 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
-		// 2. 회의실 예약 조회
+		// 3. 권한 검증
+		if (user.getRole().equals(UserRole.USER)
+				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
+		}
+
+		// 4. 회의실 예약 조회
 		List<ReservationRoom> reservationRooms = reservationRoomRepository.findByReservation(reservation);
 
 		if (reservationRooms.isEmpty()) {
@@ -93,7 +103,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 		MeetingRoom meetingRoom = reservation.getMeetingRoom();
 
-		// 3. 시간 조회
+		// 5. 시간 조회
 		List<RoomSlot> roomSlots = reservationRooms.stream()
 				.map(ReservationRoom::getRoomSlot)
 				.sorted(Comparator.comparing(RoomSlot::getSlotStartAt))
@@ -102,11 +112,35 @@ public class ReservationServiceImpl implements ReservationService {
 		LocalDate reservationDate = roomSlots.getFirst().getSlotStartAt().toLocalDate();
 		List<ReservationTimeSlot> reservationTimeSlots = makeReservationTimeSlot(roomSlots);
 
+		// 6. 비품 예약 조회
+		List<EquipmentItem> equipmentItems = reservationEquipmentRepository
+				.findByReservation_ReservationIdAndStatus(reservationId, ReservationStatus.PENDING)
+				.stream()
+				.map(EquipmentItem::from)
+				.toList();
+
+		// 금액 계산
+		BigDecimal roomAmount = calcTotalAmount(meetingRoom.getHourlyPrice(), roomSlots);
+
+		BigDecimal equipmentAmount = equipmentItems.stream()
+				.map(EquipmentItem::totalAmount)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+
+		BigDecimal totalAmount = equipmentAmount;
+
+		if(reservation.getStatus() == ReservationStatus.PENDING) {
+			totalAmount = totalAmount.add(roomAmount);
+		}
+
 		return reservationRoomMapper.toReservationRoomRes(
 				reservation,
 				meetingRoom,
 				reservationTimeSlots,
-				reservationDate
+				equipmentItems,
+				reservationDate,
+				roomAmount,
+				equipmentAmount,
+				totalAmount
 		);
 	}
 
@@ -125,10 +159,10 @@ public class ReservationServiceImpl implements ReservationService {
 	 * @throws BusinessException 회의실 또는 슬롯이 존재하지 않거나 이미 예약된 경우 발생
 	 */
 	@Transactional
-	public ReservationRoomRes createReservationRoomTransactional(CreateReservationRoomReq request) {
+	public ReservationRoomRes createReservationRoomTransactional(Long userId, CreateReservationRoomReq request) {
 
-		// 임시 데이터
-		User user = userRepository.findById(1L).get();
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 1. 회의실 조회
 		MeetingRoom meetingRoom = meetingRoomRepository.findById(request.roomId())
@@ -168,6 +202,7 @@ public class ReservationServiceImpl implements ReservationService {
 		// 4. 금액 계산
 		BigDecimal totalAmount = calcTotalAmount(meetingRoom.getHourlyPrice(), roomSlots);
 
+		log.info("예약 생성");
 		// 5. 예약 생성
 		Reservation reservation = new Reservation(
 				user,
@@ -176,6 +211,8 @@ public class ReservationServiceImpl implements ReservationService {
 				totalAmount);
 
 		reservationRepository.save(reservation);
+
+		log.info("예약 History");
 
 		// 5-1. 예약 history 발행
 		publishReservationStatusChangedEvent(
@@ -208,15 +245,18 @@ public class ReservationServiceImpl implements ReservationService {
 				reservation,
 				meetingRoom,
 				reservationTimeSlots,
-				reservationDate
+				null,
+				reservationDate,
+				reservation.getTotalAmount(),
+                BigDecimal.valueOf(0),
+				reservation.getTotalAmount()
 		);
 
 	}
 
 	/**
 	 * 비품 예약 추가
-	 * - PENDING 상태: 회의실 예약과 함께 비품 추가
-	 * - CONFIRMED 상태: 확정된 예약에 비품 추가
+	 * 예약 상태를 PENDING으로 변경
 	 */
 	@Override
 	@Transactional
@@ -224,8 +264,6 @@ public class ReservationServiceImpl implements ReservationService {
 			Long reservationId,
 			AddEquipmentsReq request) {
 
-		log.info("기존 예약에 비품 추가 - reservationId: {}, count: {}",
-				reservationId, request.equipments().size());
 
 		// 1. 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
@@ -257,6 +295,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 	}
 
+	//
 	private List<ReservationEquipment> createEquipmentReservations(Reservation reservation,
 																   List<RoomSlot> roomSlots,
 																   List<EquipmentReservationReq> equipmentRequests) {
@@ -277,7 +316,7 @@ public class ReservationServiceImpl implements ReservationService {
 		List<ReservationEquipment> reservationEquipments = new ArrayList<>();
 
 		for (EquipmentReservationReq equipmentReq : equipmentRequests) {
-			Equipment equipment = equipmentRepository.findById(equipmentReq.getEquipmentId())
+			Equipment equipment = equipmentRepository.findById(equipmentReq.equipmentId())
 					.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
 
 			// 5. 비품 상태 확인
@@ -288,24 +327,24 @@ public class ReservationServiceImpl implements ReservationService {
 			// 6. 재고 검증
 			validateAvailableStock(
 					equipment.getEquipmentId(),
-					equipmentReq.getQuantity(),
+					equipmentReq.quantity(),
 					startTime,
 					endTime
 			);
 
 			// 7. 단가와 총액 계산
-			BigDecimal unitPrice = equipmentReq.getUnitPrice() != null
-					? equipmentReq.getUnitPrice()
+			BigDecimal unitPrice = equipmentReq.unitPrice() != null
+					? equipmentReq.unitPrice()
 					: equipment.getPrice();
 
 			BigDecimal totalAmount = unitPrice
-					.multiply(BigDecimal.valueOf(equipmentReq.getQuantity()));
+					.multiply(BigDecimal.valueOf(equipmentReq.quantity()));
 
 			// 8. ReservationEquipment 생성
 			ReservationEquipment reservationEquipment = ReservationEquipment.builder()
 					.reservation(reservation)
 					.equipment(equipment)
-					.quantity(equipmentReq.getQuantity())
+					.quantity(equipmentReq.quantity())
 					.status(ReservationStatus.PENDING)
 					.unitPrice(unitPrice)
 					.totalAmount(totalAmount)
@@ -314,7 +353,7 @@ public class ReservationServiceImpl implements ReservationService {
 			reservationEquipments.add(reservationEquipment);
 
 			log.debug("비품 예약 생성 - equipment: {}, quantity: {}, amount: {}",
-					equipment.getEquipmentName(), equipmentReq.getQuantity(), totalAmount);
+					equipment.getEquipmentName(), equipmentReq.quantity(), totalAmount);
 		}
 
 		// 9. 저장
@@ -336,7 +375,10 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Override
 	@Transactional
-	public void confirmReservation(Long reservationId, ConfirmReservationReq request) {
+	public void confirmReservation(Long userId, Long reservationId, ConfirmReservationReq request) {
+
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 회의실 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
@@ -344,20 +386,27 @@ public class ReservationServiceImpl implements ReservationService {
 
 		ReservationStatus fromStatus = reservation.getStatus();
 
-		// 회의실 예약 확정
-		reservation.confirm(request.memo());
+		if (user.getRole().equals(UserRole.USER)
+				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
+		}
 
-		// 회의실 예약 총 횟수 증가
-		reservation.getMeetingRoom().incrementReservations();
+		if(reservation.getStatus() == ReservationStatus.PENDING) {
+			// 회의실 예약 확정
+			reservation.confirm(request.memo());
 
-		// 이벤트 발행
-		publishReservationStatusChangedEvent(
-				reservation,
-				fromStatus,
-				reservation.getStatus(),
-				reservation.getUser(),
-				request.memo()
-		);
+			// 회의실 예약 총 횟수 증가
+			reservation.getMeetingRoom().incrementReservations();
+
+			// 이벤트 발행
+			publishReservationStatusChangedEvent(
+					reservation,
+					fromStatus,
+					reservation.getStatus(),
+					user,
+					request.memo()
+			);
+		}
 
 		// 비품 예약이 있으면 함께 확정
 		if (request.reservationEquipmentIds() != null && !request.reservationEquipmentIds().isEmpty()) {
@@ -489,13 +538,19 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Override
 	@Transactional
-	public void cancelReservation(Long reservationId, CancelReservationReq request) {
+	public void cancelReservation(Long userId, Long reservationId, CancelReservationReq request) {
+
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
-		// TODO: 예약자 검증
+		if (user.getRole().equals(UserRole.USER)
+				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
+		}
 
 		ReservationStatus fromStatus = reservation.getStatus();
 
@@ -520,7 +575,7 @@ public class ReservationServiceImpl implements ReservationService {
 		// 회의실 예약 슬롯 삭제
 		reservationRoomRepository.deleteAll(reservationRooms);
 
-		// TODO: 비품이 있는경우 함께 삭제
+		// 비품이 있는경우 함께 삭제
 
 		List<ReservationEquipment> reservationEquipments =
 				reservationEquipmentRepository.findByReservation_ReservationIdAndStatusNot(
@@ -541,7 +596,7 @@ public class ReservationServiceImpl implements ReservationService {
 				reservation,//reservation
 				fromStatus, //confrimed
 				reservation.getStatus(),//cancelled
-				reservation.getUser(), //User
+				user, //User
 				reason //"cancel"
 		);
 	}
@@ -578,14 +633,19 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Override
 	@Transactional
-	public void expireReservation(Long reservationId) {
+	public void expireReservation(Long userId, Long reservationId) {
+
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
-		// TODO: 예약자 검증
-
+		if (user.getRole().equals(UserRole.USER)
+				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
+		}
 		ReservationStatus fromStatus = reservation.getStatus();
 
 		if(fromStatus == ReservationStatus.PENDING) {
@@ -611,7 +671,7 @@ public class ReservationServiceImpl implements ReservationService {
 					reservation,
 					fromStatus,
 					reservation.getStatus(),
-					reservation.getUser(),
+					user,
 					reason
 			);
 		}

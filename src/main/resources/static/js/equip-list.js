@@ -1,51 +1,42 @@
 let equipmentsData = [];
 let selectedEquipments = new Map();
-let requestInProgress = false; // 중복 요청 방지
+let requestInProgress = false;
 let retryCount = 0;
+let pollingInterval = null;
+let reservationId;
 
 const MAX_RETRY = 3;
+const POLLING_INTERVAL = 10000; // 10초마다 폴링
 
-// ==================== 초기화 ====================
+
 document.addEventListener('DOMContentLoaded', () => {
     const dataContainer = document.getElementById('equip-data');
+
     if (!dataContainer) {
         console.error('데이터 컨테이너(#equip-data)를 찾을 수 없습니다!');
         return;
     }
-    reservationId = dataContainer.dataset.resId; // th:data-res-id 에서 가져옴
-
-    console.log('페이지 로드 완료 - reservationId:', reservationId);
+    reservationId = dataContainer.dataset.resId;
     lucide.createIcons();
-    loadEquipments();
+    initialLoad();
 });
 
-// ==================== API 호출 ====================
+async function initialLoad() {
+    await loadEquipments();
+    startPolling();
+}
+
 /**
- * 비품 목록 조회 (재시도 로직 포함)
+ * 비품 목록 조회 (Core 함수)
  */
-async function loadEquipments() {
-    if (requestInProgress) {
-        console.log('요청이 이미 진행 중입니다.');
-        return;
-    }
+async function fetchEquipments() {
+    if (requestInProgress) { return null; }
 
-    const loading = document.getElementById('loading');
-    const error = document.getElementById('error');
-    const equipmentList = document.getElementById('equipment-list');
-    const noEquipment = document.getElementById('no-equipment');
-
-    // 초기화
-    loading.classList.remove('hidden');
-    error.classList.add('hidden');
-    equipmentList.classList.add('hidden');
-    noEquipment.classList.add('hidden');
     requestInProgress = true;
 
     try {
-        console.log(`[${new Date().toISOString()}] API 요청 시작 - reservationId: ${reservationId}`);
-
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const response = await fetch(`/api/v1/reservations/${reservationId}/equipments`, {
             method: 'GET',
@@ -58,74 +49,164 @@ async function loadEquipments() {
 
         clearTimeout(timeoutId);
 
-        console.log(`[${new Date().toISOString()}] 응답 상태:`, response.status);
-
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
         }
 
         const result = await response.json();
-        console.log(`[${new Date().toISOString()}] 응답 데이터:`, result);
 
         if (!result.success) {
             throw new Error(result.message || '비품 목록을 불러오는데 실패했습니다.');
         }
 
-        equipmentsData = result.data || [];
+        return result.data || [];
+
+    } catch (err) {
+        console.error(`[${new Date().toISOString()}] API 에러:`, err);
+        throw err;
+    } finally {
+        requestInProgress = false;
+    }
+}
+
+/**
+ * 비품 목록 로드
+ */
+async function loadEquipments() {
+//    const loading = document.getElementById('loading');
+//    const error = document.getElementById('error');
+    const equipmentList = document.getElementById('equipment-list');
+    const noEquipment = document.getElementById('no-equipment');
+
+    // UI 초기화
+//    loading?.classList.remove('hidden');
+//    error?.classList.add('hidden');
+    equipmentList?.classList.add('hidden');
+    noEquipment?.classList.add('hidden');
+
+
+    try {
+        equipmentsData = await fetchEquipments();
         retryCount = 0; // 성공 시 재시도 카운트 리셋
 
-        if (equipmentsData.length === 0) {
-            noEquipment.classList.remove('hidden');
-            document.getElementById('equipment-count').textContent = '비품 없음';
-        } else {
-            renderEquipments(equipmentsData);
-            equipmentList.classList.remove('hidden');
-            document.getElementById('equipment-count').textContent = `총 ${equipmentsData.length}개 비품`;
-        }
-
+        updateUI();
         console.log(`[${new Date().toISOString()}] 비품 ${equipmentsData.length}개 로드 완료`);
 
     } catch (err) {
-        console.error(`[${new Date().toISOString()}] 에러 발생:`, err);
-
-        let errorMessage = '비품 목록을 불러오는데 실패했습니다.';
-
-        if (err.name === 'AbortError') {
-            errorMessage = '요청 시간이 초과되었습니다. 네트워크 상태를 확인해주세요.';
-        } else if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
-            errorMessage = '네트워크 연결을 확인해주세요.';
-        } else if (err.message) {
-            errorMessage = err.message;
-        }
-
-        // 자동 재시도 (최대 3회)
-        if (retryCount < MAX_RETRY && !err.name === 'AbortError') {
-            retryCount++;
-            console.log(`재시도 ${retryCount}/${MAX_RETRY}...`);
-            setTimeout(() => {
-                requestInProgress = false;
-                loadEquipments();
-            }, 1000 * retryCount); // 재시도 간격 증가 (1초, 2초, 3초)
-            return;
-        }
-
-        document.getElementById('error-message').textContent = errorMessage;
-        error.classList.remove('hidden');
-
+        await handleLoadError(err, loading, error);
     } finally {
-        loading.classList.add('hidden');
-        requestInProgress = false;
+//        loading.classList.add('hidden');
         lucide.createIcons();
     }
 }
 
-// ==================== 렌더링 ====================
+/**
+ * 에러 처리 및 재시도 로직
+ */
+async function handleLoadError(err, loading, error) {
+    console.error(`[${new Date().toISOString()}] 로드 에러:`, err);
+
+    let errorMessage = '비품 목록을 불러오는데 실패했습니다.';
+
+    if (err.name === 'AbortError') {
+        errorMessage = '요청 시간이 초과되었습니다. 네트워크 상태를 확인해주세요.';
+    } else if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
+        errorMessage = '네트워크 연결을 확인해주세요.';
+    } else if (err.message) {
+        errorMessage = err.message;
+    }
+
+    // 자동 재시도 (최대 3회, AbortError는 제외)
+    if (retryCount < MAX_RETRY && err.name !== 'AbortError') {
+        retryCount++;
+        console.log(`재시도 ${retryCount}/${MAX_RETRY}...`);
+
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+
+        return loadEquipments(); // 재귀 호출
+    }
+
+    // 재시도 실패 시 에러 표시
+    document.getElementById('error-message').textContent = errorMessage;
+    error.classList.remove('hidden');
+}
+
+/**
+ * 폴링 시작
+ */
+function startPolling() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+
+    pollingInterval = setInterval(async () => {
+        try {
+            console.log(`[${new Date().toISOString()}] 폴링 - 비품 목록 갱신`);
+
+            const newData = await fetchEquipments();
+
+            if (!newData) {
+                return; // 요청 진행 중이면 스킵
+            }
+
+            // 데이터 변경 확인
+            if (JSON.stringify(equipmentsData) !== JSON.stringify(newData)) {
+                console.log('🔄 데이터 변경 감지 - UI 업데이트');
+
+                equipmentsData = newData;
+                updateUI();
+
+            } else {
+                console.log('✅ 데이터 변경 없음');
+            }
+
+        } catch (err) {
+            console.error('폴링 중 에러 (계속 진행):', err);
+        }
+    }, POLLING_INTERVAL);
+}
+
+/**
+ * 폴링 중지
+ */
+function stopPolling() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+        console.log('📡 폴링 중지');
+    }
+}
+
+/**
+ * UI 업데이트
+ */
+function updateUI() {
+    const equipmentList = document.getElementById('equipment-list');
+    const noEquipment = document.getElementById('no-equipment');
+
+    if (equipmentsData.length === 0) {
+        equipmentList.classList.add('hidden');
+        noEquipment.classList.remove('hidden');
+        document.getElementById('equipment-count').textContent = '비품 없음';
+    } else {
+        if (equipmentList.children.length > 0) {
+            updateStockOnly();
+        } else {
+            renderEquipments(equipmentsData);
+        }
+        equipmentList.classList.remove('hidden');
+        noEquipment.classList.add('hidden');
+        document.getElementById('equipment-count').textContent = `총 ${equipmentsData.length}개 비품`;
+    }
+}
+
 /**
  * 비품 목록 렌더링
  */
 function renderEquipments(equipments) {
     const container = document.getElementById('equipment-list');
+
     if (!equipments || equipments.length === 0) {
         container.innerHTML = `
             <div class="col-span-full text-center py-12">
@@ -143,29 +224,27 @@ function renderEquipments(equipments) {
 
     sortedEquipments.forEach((equipment, index) => {
         const card = createEquipmentCard(equipment);
-        card.style.animationDelay = `${index * 0.05}s`; // 순차적 애니메이션
+        card.style.animationDelay = `${index * 0.05}s`;
         container.appendChild(card);
     });
-
     lucide.createIcons();
 }
 
-
+/**
+ * 비품 정렬 (대여 가능 → 불가 순)
+ */
 function sortEquipmentsByAvailability(equipments) {
     return equipments.sort((a, b) => {
         const aAvailable = a.availableStock > 0 && a.status === 'AVAILABLE';
         const bAvailable = b.availableStock > 0 && b.status === 'AVAILABLE';
 
-        // 대여 가능한 것이 먼저 오도록
-        if (aAvailable && !bAvailable) return -1;  // a가 앞으로
-        if (!aAvailable && bAvailable) return 1;   // b가 앞으로
+        if (aAvailable && !bAvailable) return -1;
+        if (!aAvailable && bAvailable) return 1;
 
-        // 둘 다 같은 상태면 재고 많은 순
         if (aAvailable && bAvailable) {
             return b.availableStock - a.availableStock;
         }
 
-        // 둘 다 대여 불가면 이름 순
         return a.equipmentName.localeCompare(b.equipmentName);
     });
 }
@@ -182,76 +261,150 @@ function createEquipmentCard(equipment) {
     card.dataset.equipmentId = equipment.equipmentId;
 
     card.innerHTML = `
-                <div class="p-6 border-b border-gray-200">
-                    <div class="flex items-start justify-between">
-                        <div class="flex items-center gap-3 flex-1">
-                            <div class="p-3 bg-blue-100 rounded-lg">
-                                <i data-lucide="${iconName}" class="w-6 h-6 text-blue-600"></i>
-                            </div>
-                            <div class="flex-1">
-                                <h3 class="text-lg font-semibold text-gray-900">${equipment.equipmentName}</h3>
-                            </div>
-                        </div>
-                        <button class="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors"
-                                onclick="showDetail(${equipment.equipmentId})"
-                                title="상세 정보">
-                            <i data-lucide="info" class="w-4 h-4"></i>
+        <div class="p-6 border-b border-gray-200">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3 flex-1">
+                    <div class="p-3 bg-blue-100 rounded-lg">
+                        <i data-lucide="${iconName}" class="w-6 h-6 text-blue-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900">${equipment.equipmentName}</h3>
+                    </div>
+                </div>
+                <button class="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors"
+                        onclick="showDetail(${equipment.equipmentId})"
+                        title="상세 정보">
+                    <i data-lucide="info" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm text-gray-600">재고 현황</p>
+                        <p class="text-lg font-semibold text-gray-900">
+                            <span class="available-stock ${equipment.availableStock === 0 ? 'text-red-600' : 'text-blue-600'}">${equipment.availableStock}</span>
+                            / <span class="total-stock">${equipment.totalStock}</span>
+                        </p>
+                    </div>
+                    <span class="status-badge px-3 py-1 ${isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} rounded-full text-sm font-medium">
+                        ${isAvailable ? '대여 가능' : '대여 불가'}
+                    </span>
+                </div>
+
+                <div>
+                    <p class="text-sm text-gray-600">대여료</p>
+                    <p class="text-xl font-bold text-gray-900">${equipment.price.toLocaleString()}원</p>
+                </div>
+
+                ${isAvailable ? `
+                <div class="pt-4 border-t">
+                    <p class="text-sm text-gray-600 mb-2">수량 선택</p>
+                   <div class="flex items-center gap-2">
+                        <button class="btn-decrease flex-1 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                onclick="decreaseQuantity(${equipment.equipmentId})" disabled>
+                            <i data-lucide="minus" class="w-4 h-4 mx-auto"></i>
+                        </button>
+                    
+                        <div class="w-14 text-center font-semibold text-lg quantity-display">0</div>
+                    
+                        <button class="btn-increase flex-1 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-all"
+                                onclick="increaseQuantity(${equipment.equipmentId})"
+                                data-max="${equipment.availableStock}">
+                            <i data-lucide="plus" class="w-4 h-4 mx-auto"></i>
                         </button>
                     </div>
-                </div>
-
-                <div class="p-6">
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-gray-600">재고 현황</p>
-                                <p class="text-lg font-semibold text-gray-900">
-                                    <span class="${equipment.availableStock === 0 ? 'text-red-600' : 'text-blue-600'}">${equipment.availableStock}</span>
-                                    / ${equipment.totalStock}
-                                </p>
-                            </div>
-                            ${isAvailable
-        ? '<span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">대여 가능</span>'
-        : '<span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">대여 불가</span>'
-    }
-                        </div>
-
-                        <div>
-                            <p class="text-sm text-gray-600">대여료</p>
-                            <p class="text-xl font-bold text-gray-900">${equipment.price.toLocaleString()}원</p>
-                        </div>
-
-                        ${isAvailable ? `
-                        <div class="pt-4 border-t">
-                            <p class="text-sm text-gray-600 mb-2">수량 선택</p>
-                            <div class="flex items-center gap-2">
-                                <button class="btn-decrease px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                        onclick="decreaseQuantity(${equipment.equipmentId})" disabled>
-                                    <i data-lucide="minus" class="w-4 h-4"></i>
-                                </button>
-                                <div class="w-16 text-center font-semibold text-lg quantity-display">0</div>
-                                <button class="btn-increase px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-all"
-                                        onclick="increaseQuantity(${equipment.equipmentId})"
-                                        data-max="${equipment.availableStock}">
-                                    <i data-lucide="plus" class="w-4 h-4"></i>
-                                </button>
-                                <button class="btn-add-cart ml-2 flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-all font-semibold"
-                                        onclick="addToCart(${equipment.equipmentId})">
-                                    <i data-lucide="shopping-cart" class="w-4 h-4 inline mr-1"></i>
-                                    <span class="add-text">추가하기</span>
-                                </button>
-                            </div>
-                        </div>
-                        ` : `
-                        <div class="pt-4 border-t">
-                            <p class="text-sm text-red-600 text-center">현재 대여 불가능합니다</p>
-                        </div>
-                        `}
                     </div>
                 </div>
-            `;
+                ` : `
+                <div class="pt-4 border-t">
+                    <p class="text-sm text-red-600 text-center">현재 대여 불가능합니다</p>
+                </div>
+                `}
+            </div>
+        </div>
+    `;
 
     return card;
+}
+
+/**
+ * 재고 정보만 업데이트
+ */
+function updateStockOnly() {
+    let updateCount = 0;
+
+    equipmentsData.forEach(equipment => {
+        const card = findCard(equipment.equipmentId);
+        if (!card) return;
+
+        // 재고 숫자 업데이트
+        const availableStockSpan = card.querySelector('.available-stock');
+        const totalStockSpan = card.querySelector('.total-stock');
+        const statusBadge = card.querySelector('.status-badge');
+
+        if (availableStockSpan) {
+            availableStockSpan.textContent = equipment.availableStock;
+            availableStockSpan.className = equipment.availableStock === 0
+                ? 'available-stock text-red-600'
+                : 'available-stock text-blue-600';
+        }
+
+        if (totalStockSpan) {
+            totalStockSpan.textContent = equipment.totalStock;
+        }
+
+        // 상태 배지 업데이트
+        const isAvailable = equipment.availableStock > 0 && equipment.status === 'AVAILABLE';
+        if (statusBadge) {
+            statusBadge.className = `status-badge px-3 py-1 ${isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} rounded-full text-sm font-medium`;
+            statusBadge.textContent = isAvailable ? '대여 가능' : '대여 불가';
+        }
+
+        // 카드 opacity
+        if (!isAvailable) {
+            card.classList.add('opacity-60');
+        } else {
+            card.classList.remove('opacity-60');
+        }
+        updateCount++;
+    });
+    console.log(`✅ 재고 업데이트 완료 - ${updateCount}개`);
+}
+
+
+/**
+ * 페이지 visibility 변경 시
+ */
+document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+        console.log('페이지 숨김 - 폴링 중지');
+        stopPolling();
+    } else {
+        console.log('페이지 표시 - 폴링 재시작');
+        startPolling();
+    }
+});
+
+function validateForm() {
+    const inputs = document.querySelectorAll('.equipment-quantity-input');
+
+    let hasQuantity = false;
+
+    inputs.forEach(input => {
+        if (parseInt(input.value) > 0) {
+            hasQuantity = true;
+        }
+    });
+
+    if (!hasQuantity) {
+        showToast('비품을 선택해주세요.', 'error');
+        return false;
+    }
+
+    return true;
 }
 
 // ==================== 아이콘 매핑 ====================
@@ -289,16 +442,23 @@ function increaseQuantity(id) {
     const quantityDisplay = card.querySelector('.quantity-display');
     const decreaseBtn = card.querySelector('.btn-decrease');
     const increaseBtn = card.querySelector('.btn-increase');
+    const input = card.querySelector('.equipment-quantity-input');
 
     let quantity = parseInt(quantityDisplay.textContent);
     if (quantity < equipment.availableStock) {
         quantity++;
         quantityDisplay.textContent = quantity;
+        input.value = quantity;
+
         decreaseBtn.disabled = false;
 
         if (quantity === equipment.availableStock) {
             increaseBtn.disabled = true;
         }
+        selectedEquipments.set(id, {
+            ...equipment,
+            quantity: quantity
+        });
 
         card.classList.add('selected-card');
         updateCart(equipment, quantity);
@@ -313,35 +473,33 @@ function decreaseQuantity(id) {
     const quantityDisplay = card.querySelector('.quantity-display');
     const decreaseBtn = card.querySelector('.btn-decrease');
     const increaseBtn = card.querySelector('.btn-increase');
+    const input = card.querySelector('.equipment-quantity-input');
 
     let quantity = parseInt(quantityDisplay.textContent);
     if (quantity > 0) {
         quantity--;
         quantityDisplay.textContent = quantity;
+        input.value = quantity;
+
         increaseBtn.disabled = false;
 
         if (quantity === 0) {
             decreaseBtn.disabled = true;
             card.classList.remove('selected-card');
+            selectedEquipments.delete(id);
+        } else {
+            selectedEquipments.set(id, {
+                ...equipment,
+                quantity: quantity
+            });
         }
-
         updateCart(equipment, quantity);
-    }
-}
-
-function addToCart(id) {
-    const card = findCard(id);
-    if (!card) return;
-
-    const quantity = parseInt(card.querySelector('.quantity-display').textContent);
-    if (quantity === 0) {
-        increaseQuantity(id);
     }
 }
 
 // ==================== 장바구니 관리 ====================
 function updateCart(equipment, quantity) {
-    const id = String(equipment.equipmentId);
+    const id = equipment.equipmentId;
 
     if (quantity > 0) {
         selectedEquipments.set(id, {
@@ -450,10 +608,9 @@ function removeFromCart(id) {
 }
 
 // ==================== 제출 ====================
-function submitEquipments() {
-    //TODO: 비품 예약 확정 API
+function submitEquipments(event) {
     if (selectedEquipments.size === 0) {
-        alert('비품을 선택해주세요.');
+        showToast('비품을 선택해주세요.', 'error');
         return;
     }
 
@@ -464,9 +621,13 @@ function submitEquipments() {
     }
 
     // 예약 정보 가져오기
-    const reservationInfo = document.getElementById('reservation-info');
-    const reservationId = reservationInfo.dataset.reservationId;
-    const reservationStatus = reservationInfo.dataset.reservationStatus;
+    const equipData = document.getElementById('equip-data');
+    if (!equipData) {
+        showToast('예약 정보를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    const reservationId = equipData.dataset.resId;  // data-res-id
+    const reservationStatus = equipData.dataset.reservationStatus;
 
     const equipmentList = Array.from(selectedEquipments.values()).map(item => ({
         equipmentId: parseInt(item.id),
@@ -493,121 +654,9 @@ function submitEquipments() {
         // 시나리오 1: 회의실 + 비품 함께 확정
         confirmReservationWithEquipments(reservationId, equipmentList, submitBtn, originalText);
     }
-
-    // ==================== 시나리오 1: 회의실 + 비품 함께 확정 ====================
-    async function confirmReservationWithEquipments(reservationId, equipmentList, submitBtn, originalText) {
-        try {
-            // 1단계: 비품 예약 추가 (PENDING)
-            const addResponse = await fetch(`/api/v1/reservations/${reservationId}/equipments`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    equipments: equipmentList
-                })
-            });
-
-            if (!addResponse.ok) {
-                throw new Error('비품 추가 실패');
-            }
-
-            const addResult = await addResponse.json();
-            const reservationEquipmentIds = addResult.data.map(item => item.reservationEquipmentId);
-
-            console.log('비품 예약 ID:', reservationEquipmentIds);
-
-            // 2단계: 회의실 + 비품 함께 확정
-            const confirmResponse = await fetch(`/api/v1/reservations/${reservationId}/confirm`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    reservationEquipmentIds: reservationEquipmentIds,
-                    memo: '비품 포함 예약 확정'
-                })
-            });
-
-            if (!confirmResponse.ok) {
-                throw new Error('예약 확정 실패');
-            }
-
-            alert(`예약이 확정되었습니다.\n비품 ${equipmentList.length}개 포함`);
-            window.location.href = `/mypage/reservations`; /*결제 page 이동*/
-
-        } catch (error) {
-            console.error('예약 확정 실패:', error);
-            alert('예약 확정에 실패했습니다. 다시 시도해주세요.');
-
-            // 버튼 복구
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-            lucide.createIcons();
-        } finally {
-            requestInProgress = false;
-        }
-    }
-
-// ==================== 시나리오 2: 비품만 확정 ====================
-    async function confirmEquipmentsOnly(reservationId, equipmentList, submitBtn, originalText) {
-        try {
-            // 1단계: 비품 예약 추가 (PENDING)
-            const addResponse = await fetch(`/api/v1/reservations/${reservationId}/equipments`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    equipments: equipmentList
-                })
-            });
-
-            if (!addResponse.ok) {
-                throw new Error('비품 추가 실패');
-            }
-
-            const addResult = await addResponse.json();
-            const reservationEquipmentIds = addResult.data.map(item => item.reservationEquipmentId);
-
-            console.log('비품 예약 ID:', reservationEquipmentIds);
-
-            // 2단계: 비품만 확정
-            const confirmResponse = await fetch(`/api/v1/reservations/${reservationId}/equipments/confirm`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    reservationEquipmentIds: reservationEquipmentIds,
-                    reason: '비품 추가'
-                })
-            });
-
-            if (!confirmResponse.ok) {
-                throw new Error('비품 확정 실패');
-            }
-
-            alert(`비품 ${equipmentList.length}개가 추가되었습니다.`);
-            window.location.href = `/mypage/reservations/${reservationId}`; /*TODO: 주소 확인*/
-
-        } catch (error) {
-            console.error('비품 추가 실패:', error);
-            alert('비품 추가에 실패했습니다. 다시 시도해주세요.');
-
-            // 버튼 복구
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-            lucide.createIcons();
-        } finally {
-            requestInProgress = false;
-        }
-    }
-
 }
 
 // ==================== 상세 정보 ====================
-
 /**
  * 비품 상세 정보 표시
  */
@@ -667,7 +716,6 @@ function showDetail(id) {
     const modal = document.getElementById('detail-dialog');
     modal.classList.remove('hidden');
 
-    // Lucide 아이콘을 다시 그려줘야 새로 넣은 아이콘이 보입니다.
     lucide.createIcons();
 }
 
@@ -688,17 +736,56 @@ window.onclick = function (event) {
 }
 
 // ==================== 이벤트 리스너 ====================
-// 페이지를 벗어날 때 경고
-window.addEventListener('beforeunload', function (e) {
-    if (selectedEquipments.size > 0) {
-        e.preventDefault();
-        e.returnValue = '선택한 비품이 있습니다. 페이지를 벗어나시겠습니까?';
-    }
-});
-
 // 에러 핸들링
 window.addEventListener('error', function (e) {
     console.error('전역 에러:', e.error);
 });
 
-/*]]>*/
+// 토스트 함수 추가
+window.showToast = function(message, type = 'success', duration=3000, onClose) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `
+    px-4 py-3 rounded-lg shadow-lg text-white
+    opacity-0 translate-y-2 transition-all duration-300
+    ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}
+    `;
+    toast.textContent = message;
+
+    container.appendChild(toast);
+    requestAnimationFrame(() => {
+        toast.classList.remove('opacity-0', 'translate-y-2');
+    });
+
+    setTimeout(() => {
+        /*toast.classList.remove('show');*/
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => {
+            toast.remove();
+            onClose?.();
+        }, 100);
+    }, duration);
+};
+
+function confirmBack(event) {
+    event.preventDefault();
+
+    Swal.fire({
+        title: '이전 단계로 이동하시겠습니까?',
+        html: '이전 단계로 이동 시<br><b>예약 정보가 초기화됩니다.</b>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#000',
+        cancelButtonColor: '#9ca3af',
+        confirmButtonText: '이동',
+        cancelButtonText: '취소'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            history.back();
+        }
+    });
+
+    return false;
+}
