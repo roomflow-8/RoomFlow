@@ -14,29 +14,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Slf4j
 @Controller
 @RequiredArgsConstructor
-@RequestMapping("/reservations")
+@RequestMapping()
 public class EquipmentController {
 
 	private final EquipmentService equipmentService;
 	private final ReservationService reservationService;
 
-	/**
-	 * 비품 선택 페이지
-	 * @param reservationId 예약 ID
-	 * @param model 모델
-	 * @return 비품 선택 페이지
-	 */
-	@GetMapping("/{reservationId}/equipments")
-	public String readAvailableEquipments(@PathVariable Long reservationId, Model model) {
 
-		Reservation reservation = reservationService.getReservation(reservationId);
-
-		log.info("비품 선택 페이지 요청 - reservationId: {}", reservationId);
-
-		model.addAttribute("reservationId", reservationId);
-		model.addAttribute("reservationStatus", reservation.getStatus());
-		return "equipment/list";
-	}
 
 
 }

@@ -256,8 +256,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 	/**
 	 * 비품 예약 추가
-	 * - PENDING 상태: 회의실 예약과 함께 비품 추가
-	 * - CONFIRMED 상태: 확정된 예약에 비품 추가
+	 * 예약 상태를 PENDING으로 변경
 	 */
 	@Override
 	@Transactional
@@ -265,8 +264,6 @@ public class ReservationServiceImpl implements ReservationService {
 			Long reservationId,
 			AddEquipmentsReq request) {
 
-		log.info("기존 예약에 비품 추가 - reservationId: {}, count: {}",
-				reservationId, request.equipments().size());
 
 		// 1. 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
@@ -298,6 +295,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 	}
 
+	//
 	private List<ReservationEquipment> createEquipmentReservations(Reservation reservation,
 																   List<RoomSlot> roomSlots,
 																   List<EquipmentReservationReq> equipmentRequests) {
@@ -318,7 +316,7 @@ public class ReservationServiceImpl implements ReservationService {
 		List<ReservationEquipment> reservationEquipments = new ArrayList<>();
 
 		for (EquipmentReservationReq equipmentReq : equipmentRequests) {
-			Equipment equipment = equipmentRepository.findById(equipmentReq.getEquipmentId())
+			Equipment equipment = equipmentRepository.findById(equipmentReq.equipmentId())
 					.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
 
 			// 5. 비품 상태 확인
@@ -329,24 +327,24 @@ public class ReservationServiceImpl implements ReservationService {
 			// 6. 재고 검증
 			validateAvailableStock(
 					equipment.getEquipmentId(),
-					equipmentReq.getQuantity(),
+					equipmentReq.quantity(),
 					startTime,
 					endTime
 			);
 
 			// 7. 단가와 총액 계산
-			BigDecimal unitPrice = equipmentReq.getUnitPrice() != null
-					? equipmentReq.getUnitPrice()
+			BigDecimal unitPrice = equipmentReq.unitPrice() != null
+					? equipmentReq.unitPrice()
 					: equipment.getPrice();
 
 			BigDecimal totalAmount = unitPrice
-					.multiply(BigDecimal.valueOf(equipmentReq.getQuantity()));
+					.multiply(BigDecimal.valueOf(equipmentReq.quantity()));
 
 			// 8. ReservationEquipment 생성
 			ReservationEquipment reservationEquipment = ReservationEquipment.builder()
 					.reservation(reservation)
 					.equipment(equipment)
-					.quantity(equipmentReq.getQuantity())
+					.quantity(equipmentReq.quantity())
 					.status(ReservationStatus.PENDING)
 					.unitPrice(unitPrice)
 					.totalAmount(totalAmount)
@@ -355,7 +353,7 @@ public class ReservationServiceImpl implements ReservationService {
 			reservationEquipments.add(reservationEquipment);
 
 			log.debug("비품 예약 생성 - equipment: {}, quantity: {}, amount: {}",
-					equipment.getEquipmentName(), equipmentReq.getQuantity(), totalAmount);
+					equipment.getEquipmentName(), equipmentReq.quantity(), totalAmount);
 		}
 
 		// 9. 저장
@@ -577,7 +575,7 @@ public class ReservationServiceImpl implements ReservationService {
 		// 회의실 예약 슬롯 삭제
 		reservationRoomRepository.deleteAll(reservationRooms);
 
-		// TODO: 비품이 있는경우 함께 삭제
+		// 비품이 있는경우 함께 삭제
 
 		List<ReservationEquipment> reservationEquipments =
 				reservationEquipmentRepository.findByReservation_ReservationIdAndStatusNot(

@@ -66,6 +66,7 @@ public class ReservationRestController {
                                                                     @Valid @RequestBody AddEquipmentsReq request) {
 
         log.info("비품 예약 요청 - reservationId: {}, count: {}", reservationId, request.equipments().size());
+        log.info("비품 예약 요청 ReservationRestController POST /api/v1/reservations/{}/equipments", reservationId);
 
         EquipmentReservationRes result = reservationService.addEquipmentsToReservation(reservationId, request);
 

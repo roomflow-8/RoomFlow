@@ -30,7 +30,7 @@ public class EquipmentReservationRestController {
 	public ResponseEntity<ApiResponse<List<EquipmentAvailabilityDto>>> getAvailableEquipments(
 			@PathVariable Long reservationId) {
 
-		log.info("GET /api/reservations/{}/equipments", reservationId);
+		log.info("GET /api/v1/reservations/{}/equipments", reservationId);
 
 		List<EquipmentAvailabilityDto> availableEquipments =
 				equipmentService.getAvailableEquipments(reservationId);
