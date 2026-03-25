@@ -59,7 +59,6 @@ public class ReservationServiceImpl implements ReservationService {
 	private final ApplicationEventPublisher eventPublisher;
 
 	@Override
-	@Transactional(readOnly = true)
 	public Reservation getReservation(Long reservationId) {
 		log.debug("예약 조회 - reservationId: {}", reservationId);
 
@@ -264,7 +263,6 @@ public class ReservationServiceImpl implements ReservationService {
 			Long reservationId,
 			AddEquipmentsReq request) {
 
-
 		// 1. 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
@@ -311,20 +309,21 @@ public class ReservationServiceImpl implements ReservationService {
 				.max(LocalDateTime::compareTo)
 				.orElseThrow();
 
-
-		// 2. 비품 예약 생성
 		List<ReservationEquipment> reservationEquipments = new ArrayList<>();
 
+		// 2. 비품 조회
 		for (EquipmentReservationReq equipmentReq : equipmentRequests) {
-			Equipment equipment = equipmentRepository.findById(equipmentReq.equipmentId())
+
+			//락 1-2
+			Equipment equipment = equipmentRepository.findByEquipmentIdForUpdate(equipmentReq.equipmentId())
 					.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
 
-			// 5. 비품 상태 확인
+			// 3. 비품 상태 확인
 			if (equipment.getStatus() != EquipmentStatus.AVAILABLE) {
 				throw new BusinessException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
 			}
 
-			// 6. 재고 검증
+			// 4. 재고 검증
 			validateAvailableStock(
 					equipment.getEquipmentId(),
 					equipmentReq.quantity(),
@@ -332,7 +331,7 @@ public class ReservationServiceImpl implements ReservationService {
 					endTime
 			);
 
-			// 7. 단가와 총액 계산
+			// 5. 단가와 총액 계산
 			BigDecimal unitPrice = equipmentReq.unitPrice() != null
 					? equipmentReq.unitPrice()
 					: equipment.getPrice();
@@ -340,7 +339,7 @@ public class ReservationServiceImpl implements ReservationService {
 			BigDecimal totalAmount = unitPrice
 					.multiply(BigDecimal.valueOf(equipmentReq.quantity()));
 
-			// 8. ReservationEquipment 생성
+			// 6. ReservationEquipment 생성
 			ReservationEquipment reservationEquipment = ReservationEquipment.builder()
 					.reservation(reservation)
 					.equipment(equipment)
@@ -356,10 +355,10 @@ public class ReservationServiceImpl implements ReservationService {
 					equipment.getEquipmentName(), equipmentReq.quantity(), totalAmount);
 		}
 
-		// 9. 저장
+		// 7. 저장
 		List<ReservationEquipment> saved = reservationEquipmentRepository.saveAll(reservationEquipments);
 
-		// 10. Reservation 총액 업데이트
+		// 8. Reservation 총액 업데이트
 		updateReservationTotalAmount(reservation);
 
 		log.info("비품 예약 추가 완료 - count: {}", saved.size());
@@ -442,13 +441,25 @@ public class ReservationServiceImpl implements ReservationService {
 		log.info("비품 예약 확정 시작 - reservationId: {}, equipmentIds: {}",
 				reservationId, reservationEquipmentIds);
 
-		// 비품 예약 조회
+		// 비품 예약 조회 //락2-2
 		List<ReservationEquipment> reservationEquipments =
-				reservationEquipmentRepository.findAllById(reservationEquipmentIds);
+				reservationEquipmentRepository.findAllByIdForUpdate(reservationEquipmentIds);
 
 		// 요청한 ID 개수와 조회된 개수 비교
 		if (reservationEquipments.size() != reservationEquipmentIds.size()) {
 			throw new BusinessException(ErrorCode.RESERVATION_EQUIPMENT_NOT_FOUND);
+		}
+
+		//equipmentId 추출
+		List<Long> equipmentIds = reservationEquipments.stream()
+				.map(re -> re.getEquipment().getEquipmentId())
+				.distinct()
+				.sorted()
+				.toList();
+
+		// deadlock 방지용 정렬 락2-3
+		for (Long id : equipmentIds) {
+			equipmentRepository.findByEquipmentIdForUpdate(id);
 		}
 
 		for (ReservationEquipment reservationEquipment : reservationEquipments) {
@@ -488,6 +499,7 @@ public class ReservationServiceImpl implements ReservationService {
 					.max(LocalDateTime::compareTo)
 					.orElseThrow();
 
+			//
 			validateAvailableStock(
 					reservationEquipment.getEquipment().getEquipmentId(),
 					reservationEquipment.getQuantity(),
@@ -520,7 +532,7 @@ public class ReservationServiceImpl implements ReservationService {
 					reservationEquipment.getQuantity());
 		}
 
-		// 7. 총액 업데이트
+		// 총액 업데이트
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 		updateReservationTotalAmount(reservation);
@@ -576,7 +588,6 @@ public class ReservationServiceImpl implements ReservationService {
 		reservationRoomRepository.deleteAll(reservationRooms);
 
 		// 비품이 있는경우 함께 삭제
-
 		List<ReservationEquipment> reservationEquipments =
 				reservationEquipmentRepository.findByReservation_ReservationIdAndStatusNot(
 						reservationId,
@@ -594,7 +605,7 @@ public class ReservationServiceImpl implements ReservationService {
 		// 상태 이벤트 발행
 		publishReservationStatusChangedEvent(
 				reservation,//reservation
-				fromStatus, //confrimed
+				fromStatus, //confirmed
 				reservation.getStatus(),//cancelled
 				user, //User
 				reason //"cancel"
@@ -676,7 +687,6 @@ public class ReservationServiceImpl implements ReservationService {
 			);
 		}
 
-
 	}
 
 	// 연속된 RoomSlot을 하나의 예약 시간 구간으로 병합한다.
@@ -733,12 +743,6 @@ public class ReservationServiceImpl implements ReservationService {
 
 		Equipment equipment = equipmentRepository.findById(equipmentId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
-
-		/*
-		260322 ES Equipment Repository와 연결
-		Equipment equipment = equipmentRepository.findByEquipmentId(equipmentId)
-				.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
-		 */
 
 		int reservedQuantity = reservationEquipmentRepository
 				.calculateReservedQuantity(equipmentId, startTime, endTime);
@@ -859,16 +863,29 @@ public class ReservationServiceImpl implements ReservationService {
 		log.info("비품 예약 취소 시작 - reservationId: {}, equipmentIds: {}, count: {}",
 				reservationId, reservationEquipmentIds, reservationEquipmentIds.size());
 
-		//비품 예약 조회
-		List<ReservationEquipment> reservationEquipments = reservationEquipmentRepository.findAllById(reservationEquipmentIds);
-		log.debug("1. 비품 예약 조회 완료 - count: {}", reservationEquipments.size());
+		//비품 예약 조회 //락3-2
+		List<ReservationEquipment> reservationEquipments = reservationEquipmentRepository.findAllByIdForUpdate(reservationEquipmentIds);
+
+		log.debug("비품 예약 조회 완료 - count: {}", reservationEquipments.size());
 
 		if (reservationEquipments.size() != reservationEquipmentIds.size()) {
 			throw new BusinessException(ErrorCode.RESERVATION_EQUIPMENT_NOT_FOUND);
 		}
 
+		// 정렬: 데드락 방지 (락 순서 고정)
+		List<Long> equipmentIds = reservationEquipments.stream()
+				.map(re -> re.getEquipment().getEquipmentId())
+				.distinct()
+				.sorted()
+				.toList();
+
+		//락3-3 (모든 Equipment 미리 락)
+		for (Long id : equipmentIds) {
+			equipmentRepository.findByEquipmentIdForUpdate(id);
+		}
+
 		for (ReservationEquipment reservationEquipment : reservationEquipments) {
-			log.debug("3-1. 처리 중 - id: {}", reservationEquipment.getReservationEquipmentId());
+			log.debug("처리 중 - id: {}", reservationEquipment.getReservationEquipmentId());
 
 			// 예약 ID 일치 확인
 			if (!reservationEquipment.getReservation().getReservationId().equals(reservationId)) {
@@ -891,17 +908,20 @@ public class ReservationServiceImpl implements ReservationService {
 					: "사용자 취소";
 
 			//  상태 변경 (cancelledAt 자동 설정)
-			log.debug("3-6. 상태 변경 - cancel() 호출");
+			log.debug("상태 변경 - cancel() 호출");
 			reservationEquipment.cancel(finalReason);
 
 			// 확정된 비품이었다면 예약 건수 감소
 			if (fromStatus == ReservationStatus.CONFIRMED) {
-				Equipment equipment = reservationEquipment.getEquipment();
+				//락 3-3 Equipment
+				Equipment equipment = equipmentRepository.findByEquipmentIdForUpdate(
+						reservationEquipment.getEquipment().getEquipmentId())
+						.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
 				equipment.decrementReservations();
 			}
 
 			// 이벤트 발행
-			log.debug("3-8. 이벤트 발행 전");
+			log.debug("이벤트 발행 전");
 			publishEquipmentsReservationStatusChangedEvent(
 					reservation,
 					reservationEquipment.getReservationEquipmentId(),

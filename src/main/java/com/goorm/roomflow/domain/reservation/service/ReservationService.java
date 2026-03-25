@@ -5,7 +5,6 @@ import com.goorm.roomflow.domain.reservation.dto.request.*;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.entity.Reservation;
-import com.goorm.roomflow.domain.user.entity.User;
 
 import java.util.List;
 

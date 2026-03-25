@@ -186,6 +186,10 @@ public class UserService {
         LocalDateTime slotStartAt = mergedStarts.isEmpty() ? null : mergedStarts.get(0);
         LocalDateTime slotEndAt   = mergedEnds.isEmpty()   ? null : mergedEnds.get(mergedEnds.size() - 1);
 
+
+
+
+
         // 비품 조회 (취소된 비품 제외)
         List<ReservationEquipment> rawEquipments = reservationEquipmentRepository.findByReservation_ReservationId(r.getReservationId());
         List<UserReservationDTO.EquipmentItem> equipmentItems = rawEquipments.stream()
