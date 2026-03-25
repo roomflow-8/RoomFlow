@@ -11,12 +11,13 @@ const POLLING_INTERVAL = 10000; // 10초마다 폴링
 
 document.addEventListener('DOMContentLoaded', () => {
     const dataContainer = document.getElementById('equip-data');
+
     if (!dataContainer) {
         console.error('데이터 컨테이너(#equip-data)를 찾을 수 없습니다!');
         return;
     }
     reservationId = dataContainer.dataset.resId;
-
+    lucide.createIcons();
     initialLoad();
 });
 
@@ -79,10 +80,10 @@ async function loadEquipments() {
     const noEquipment = document.getElementById('no-equipment');
 
     // UI 초기화
-    loading.classList.remove('hidden');
-    error.classList.add('hidden');
-    equipmentList.classList.add('hidden');
-    noEquipment.classList.add('hidden');
+    loading?.classList.remove('hidden');
+    error?.classList.add('hidden');
+    equipmentList?.classList.add('hidden');
+    noEquipment?.classList.add('hidden');
 
 
     try {
@@ -198,28 +199,6 @@ function updateUI() {
         noEquipment.classList.add('hidden');
         document.getElementById('equipment-count').textContent = `총 ${equipmentsData.length}개 비품`;
     }
-}
-
-/**
- * 재고 정보만 업데이트 (카드 다시 안 그림)
- */
-function updateStockOnly() {
-    equipmentsData.forEach(equipment => {
-        const card = findCard(equipment.equipmentId);
-        if (!card) return;
-
-        // 재고 표시만 업데이트
-        const stockDisplay = card.querySelector('.text-lg.font-semibold.text-gray-900');
-        if (stockDisplay) {
-            const availableSpan = stockDisplay.querySelector('span');
-            if (availableSpan) {
-                availableSpan.textContent = equipment.availableStock;
-                availableSpan.className = equipment.availableStock === 0
-                    ? 'text-red-600'
-                    : 'text-blue-600';
-            }
-        }
-    });
 }
 
 /**
@@ -409,6 +388,25 @@ document.addEventListener('visibilitychange', function () {
     }
 });
 
+function validateForm() {
+    const inputs = document.querySelectorAll('.equipment-quantity-input');
+
+    let hasQuantity = false;
+
+    inputs.forEach(input => {
+        if (parseInt(input.value) > 0) {
+            hasQuantity = true;
+        }
+    });
+
+    if (!hasQuantity) {
+        showToast('비품을 선택해주세요.', 'error');
+        return false;
+    }
+
+    return true;
+}
+
 // ==================== 아이콘 매핑 ====================
 function getIconName(name) {
     const lowerName = name.toLowerCase();
@@ -444,16 +442,23 @@ function increaseQuantity(id) {
     const quantityDisplay = card.querySelector('.quantity-display');
     const decreaseBtn = card.querySelector('.btn-decrease');
     const increaseBtn = card.querySelector('.btn-increase');
+    const input = card.querySelector('.equipment-quantity-input');
 
     let quantity = parseInt(quantityDisplay.textContent);
     if (quantity < equipment.availableStock) {
         quantity++;
         quantityDisplay.textContent = quantity;
+        input.value = quantity;
+
         decreaseBtn.disabled = false;
 
         if (quantity === equipment.availableStock) {
             increaseBtn.disabled = true;
         }
+        selectedEquipments.set(id, {
+            ...equipment,
+            quantity: quantity
+        });
 
         card.classList.add('selected-card');
         updateCart(equipment, quantity);
@@ -468,18 +473,26 @@ function decreaseQuantity(id) {
     const quantityDisplay = card.querySelector('.quantity-display');
     const decreaseBtn = card.querySelector('.btn-decrease');
     const increaseBtn = card.querySelector('.btn-increase');
+    const input = card.querySelector('.equipment-quantity-input');
 
     let quantity = parseInt(quantityDisplay.textContent);
     if (quantity > 0) {
         quantity--;
         quantityDisplay.textContent = quantity;
+        input.value = quantity;
+
         increaseBtn.disabled = false;
 
         if (quantity === 0) {
             decreaseBtn.disabled = true;
             card.classList.remove('selected-card');
+            selectedEquipments.delete(id);
+        } else {
+            selectedEquipments.set(id, {
+                ...equipment,
+                quantity: quantity
+            });
         }
-
         updateCart(equipment, quantity);
     }
 }
@@ -595,7 +608,7 @@ function removeFromCart(id) {
 }
 
 // ==================== 제출 ====================
-function submitEquipments() {
+function submitEquipments(event) {
     if (selectedEquipments.size === 0) {
         showToast('비품을 선택해주세요.', 'error');
         return;
@@ -641,135 +654,6 @@ function submitEquipments() {
         // 시나리오 1: 회의실 + 비품 함께 확정
         confirmReservationWithEquipments(reservationId, equipmentList, submitBtn, originalText);
     }
-
-    // ==================== 시나리오 1: 회의실 + 비품 함께 확정 ====================
-    async function confirmReservationWithEquipments(reservationId, equipmentList, submitBtn, originalText) {
-        try {
-            // 1단계: 비품 예약 추가 (PENDING)
-            const addResponse = await fetch(`/api/v1/reservations/${reservationId}/equipments`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    equipments: equipmentList
-                })
-            });
-
-            if (!addResponse.ok) {
-                throw new Error('비품 추가 실패');
-            }
-
-            const addResult = await addResponse.json();
-            console.log('confirmReservationWithEquipments 비품 추가 응답 전체:', addResult);  // 디버깅용
-
-            let reservationEquipmentIds = [];
-            if (addResult.data && addResult.data.equipments && Array.isArray(addResult.data.equipments)) {
-                reservationEquipmentIds = addResult.data.equipments.map(item =>
-                    item.reservationEquipmentId || item.id
-                ).filter(Boolean);
-            }
-
-            console.log('비품 예약 ID:', reservationEquipmentIds);
-
-           /* // 2단계: 회의실 + 비품 함께 확정
-            const confirmResponse = await fetch(`/api/v1/reservations/${reservationId}/confirm`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    reservationEquipmentIds: reservationEquipmentIds,
-                    memo: '비품 포함 예약 확정'
-                })
-            });
-
-            if (!confirmResponse.ok) {
-                throw new Error('예약 확정 실패');
-            }
-*/
-            /*  selectedEquipments.clear();*/
-
-            showToast('비품이 추가되었습니다!', 'success', 1000, () => {
-                window.location.href = `/reservations/rooms/${reservationId}`;
-            });
-
-        } catch (error) {
-            console.error('예약 확정 실패:', error);
-            showToast('비품 추가에 실패했습니다. 다시 시도해주세요.', 'error');
-
-            // 버튼 복구
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-            lucide.createIcons();
-        } finally {
-            requestInProgress = false;
-        }
-    }
-
-// ==================== 시나리오 2: 비품만 확정 ====================
-    async function confirmEquipmentsOnly(reservationId, equipmentList, submitBtn, originalText) {
-        try {
-            // 1단계: 비품 예약 추가 (PENDING)
-            const addResponse = await fetch(`/api/v1/reservations/${reservationId}/equipments`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    equipments: equipmentList
-                })
-            });
-
-            if (!addResponse.ok) {
-                throw new Error('비품 추가 실패');
-            }
-
-            const addResult = await addResponse.json();
-            console.log('confirmEquipmentsOnly 비품 추가 응답 전체:', addResult);
-
-            let reservationEquipmentIds = [];
-            if (addResult.data && addResult.data.equipments && Array.isArray(addResult.data.equipments)) {
-                reservationEquipmentIds = addResult.data.equipments.map(item =>
-                    item.reservationEquipmentId || item.id
-                ).filter(Boolean);
-            }
-            console.log('비품 예약 ID:', reservationEquipmentIds);
-
-            // 2단계: 비품만 확정
-            const confirmResponse = await fetch(`/api/v1/reservations/${reservationId}/equipments/confirm`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    reservationEquipmentIds: reservationEquipmentIds,
-                    reason: '비품 추가'
-                })
-            });
-
-            if (!confirmResponse.ok) {
-                throw new Error('비품 확정 실패');
-            }
-
-            selectedEquipments.clear();
-            showToast('비품이 추가되었습니다!', 'success', 1000, () => {
-                window.location.href = `/mypage/reservations/${reservationId}`;/*TODO: 주소 확인*/
-            });
-
-        } catch (error) {
-            console.error('비품 추가 실패:', error);
-            showToast('비품 추가에 실패했습니다. 다시 시도해주세요.', 'error');
-
-            // 버튼 복구
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-            lucide.createIcons();
-        } finally {
-            requestInProgress = false;
-        }
-    }
-
 }
 
 // ==================== 상세 정보 ====================
@@ -863,7 +747,6 @@ window.showToast = function(message, type = 'success', duration=3000, onClose) {
     if (!container) return;
 
     const toast = document.createElement('div');
-  /*  toast.className = `toast ${type}`;*/
     toast.className = `
     px-4 py-3 rounded-lg shadow-lg text-white
     opacity-0 translate-y-2 transition-all duration-300
@@ -872,7 +755,6 @@ window.showToast = function(message, type = 'success', duration=3000, onClose) {
     toast.textContent = message;
 
     container.appendChild(toast);
-   /* requestAnimationFrame(() => toast.classList.add('show'));*/
     requestAnimationFrame(() => {
         toast.classList.remove('opacity-0', 'translate-y-2');
     });
@@ -886,3 +768,24 @@ window.showToast = function(message, type = 'success', duration=3000, onClose) {
         }, 100);
     }, duration);
 };
+
+function confirmBack(event) {
+    event.preventDefault();
+
+    Swal.fire({
+        title: '이전 단계로 이동하시겠습니까?',
+        html: '이전 단계로 이동 시<br><b>예약 정보가 초기화됩니다.</b>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#000',
+        cancelButtonColor: '#9ca3af',
+        confirmButtonText: '이동',
+        cancelButtonText: '취소'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            history.back();
+        }
+    });
+
+    return false;
+}
