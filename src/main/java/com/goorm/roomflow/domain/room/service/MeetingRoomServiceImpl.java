@@ -1,5 +1,7 @@
 package com.goorm.roomflow.domain.room.service;
 
+import com.goorm.roomflow.domain.reservation.service.ReservationPolicyService;
+import com.goorm.roomflow.domain.room.dto.request.CreateRoomSlotsReq;
 import com.goorm.roomflow.domain.room.dto.response.MeetingRoomListRes;
 import com.goorm.roomflow.domain.room.dto.response.MeetingRoomRes;
 import com.goorm.roomflow.domain.room.dto.response.RoomSlotRes;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,6 +33,8 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
 
     private final MeetingRoomMapper meetingRoomMapper;
     private final RoomSlotMapper roomSlotMapper;
+
+    private final ReservationPolicyService reservationPolicyService;
 
     @Override
     @Transactional(readOnly = true)
@@ -82,6 +87,59 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
                 .count();
 
         return new MeetingRoomListRes(date, availableRoomCount, rooms);
+    }
+
+    @Override
+    @Transactional
+    public void generateSlots(LocalDate targetDate) {
+
+        List<MeetingRoom> meetingRooms = meetingRoomRepository.findByStatusIn(RoomStatus.AVAILABLE, RoomStatus.MAINTENANCE);
+
+        generateSlotsForMeetingRooms(meetingRooms, targetDate);
+    }
+
+    @Override
+    @Transactional
+    public void generateSlotsForRoom(CreateRoomSlotsReq createRoomSlotsReq) {
+
+        List<MeetingRoom> meetingRooms = meetingRoomRepository.findAllById(createRoomSlotsReq.meetingRoomIds());
+
+        generateSlotsForMeetingRooms(meetingRooms, createRoomSlotsReq.targetDate());
+    }
+
+    private void generateSlotsForMeetingRooms(List<MeetingRoom> meetingRooms, LocalDate targetDate) {
+        LocalTime startTime = reservationPolicyService.getTimeValue("RESERVATION_START_TIME");
+        LocalTime endTime = reservationPolicyService.getTimeValue("RESERVATION_END_TIME");
+        int slotUnitMinutes = reservationPolicyService.getIntValue("SLOT_UNIT_MINUTES");
+
+        for (MeetingRoom meetingRoom : meetingRooms) {
+            createSlotsIfNotExists(meetingRoom, targetDate, startTime, endTime, slotUnitMinutes);
+        }
+
+    }
+
+    private void createSlotsIfNotExists(MeetingRoom meetingRoom, LocalDate targetDate,
+                                        LocalTime startTime, LocalTime endTime, int slotUnitMinutes) {
+
+        LocalDateTime currentTime = targetDate.atTime(startTime);
+        LocalDateTime closeTime = targetDate.atTime(endTime);
+
+        while(currentTime.isBefore(closeTime)) {
+            LocalDateTime nextTime = currentTime.plusMinutes(slotUnitMinutes);
+
+            boolean exists = roomSlotRepository.existsByMeetingRoomAndSlotStartAtAndSlotEndAt(
+                    meetingRoom, currentTime, nextTime
+            );
+
+            if(!exists) {
+                roomSlotRepository.save(
+                    new RoomSlot(meetingRoom, currentTime, nextTime, true)
+                );
+            }
+
+            currentTime = nextTime;
+        }
+
     }
 
     private String getStatusMessage(MeetingRoom meetingRoom, List<RoomSlotRes> roomSlots) {
