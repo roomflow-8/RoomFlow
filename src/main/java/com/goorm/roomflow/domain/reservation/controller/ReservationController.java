@@ -1,7 +1,6 @@
 package com.goorm.roomflow.domain.reservation.controller;
 
 import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
-import com.goorm.roomflow.domain.equipment.dto.response.EquipmentListRes;
 import com.goorm.roomflow.domain.equipment.service.EquipmentService;
 import com.goorm.roomflow.domain.reservation.dto.request.*;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
@@ -91,7 +90,8 @@ public class ReservationController {
      */
     @PostMapping("/{reservationId}/equipments")
     public String createEquipmentReservation(@PathVariable("reservationId") Long reservationId,
-                                             @ModelAttribute EquipmentFormReq formReq){
+                                             @ModelAttribute EquipmentFormReq formReq,
+                                             RedirectAttributes redirectAttributes){
 
         try {
             log.info("비품 예약 요청 - reservationId: {}", reservationId);
@@ -130,12 +130,21 @@ public class ReservationController {
 
                 reservationService.confirmEquipmentsService(reservationId, equipmentIds);
 
+                redirectAttributes.addFlashAttribute(
+                        "message",
+                        "비품이 예약에 추가되었습니다."
+                );
+
                 //return "redirect:/mypage/reservations/" + reservationId;
                 return "redirect:/reservations/rooms/" + reservationId;
 
             } else if(reservation.getStatus() == ReservationStatus.PENDING) {
 
                 log.info("PENDING 예약에 비품 {} 개 추가 완료 (승인 대기)", response.equipments().size());
+                redirectAttributes.addFlashAttribute(
+                        "message",
+                        "비품이 추가되었습니다. 승인 대기중입니다."
+                );
                 return "redirect:/reservations/rooms/" + reservationId;
             } else {
                 log.warn("처리 불가능한 예약 상태: {}", currentStatus);

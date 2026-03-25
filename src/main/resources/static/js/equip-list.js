@@ -74,14 +74,14 @@ async function fetchEquipments() {
  * 비품 목록 로드
  */
 async function loadEquipments() {
-    const loading = document.getElementById('loading');
-    const error = document.getElementById('error');
+//    const loading = document.getElementById('loading');
+//    const error = document.getElementById('error');
     const equipmentList = document.getElementById('equipment-list');
     const noEquipment = document.getElementById('no-equipment');
 
     // UI 초기화
-    loading?.classList.remove('hidden');
-    error?.classList.add('hidden');
+//    loading?.classList.remove('hidden');
+//    error?.classList.add('hidden');
     equipmentList?.classList.add('hidden');
     noEquipment?.classList.add('hidden');
 
@@ -96,7 +96,7 @@ async function loadEquipments() {
     } catch (err) {
         await handleLoadError(err, loading, error);
     } finally {
-        loading.classList.add('hidden');
+//        loading.classList.add('hidden');
         lucide.createIcons();
     }
 }
@@ -499,7 +499,7 @@ function decreaseQuantity(id) {
 
 // ==================== 장바구니 관리 ====================
 function updateCart(equipment, quantity) {
-    const id = String(equipment.equipmentId);
+    const id = equipment.equipmentId;
 
     if (quantity > 0) {
         selectedEquipments.set(id, {

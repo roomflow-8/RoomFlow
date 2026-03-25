@@ -18,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
@@ -74,7 +73,6 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 		QReservationRoom reservationRoom = QReservationRoom.reservationRoom;
 		QRoomSlot roomSlot = QRoomSlot.roomSlot;
 
-		LocalDate date = reservationInfo.startAt().toLocalDate();
 		return jpaQueryFactory
 				.select(new QEquipmentAvailabilityDto(
 						equipment.equipmentId,
@@ -86,19 +84,24 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 										.select(reservationEquipment.quantity.sum().coalesce(0))
 										.from(reservationEquipment)
 										.join(reservationEquipment.reservation, reservation)
-										.innerJoin(reservationRoom).on(reservationRoom.reservation.eq(reservation))
-										.join(reservationRoom.roomSlot, roomSlot)
 										.where(
 												reservationEquipment.equipment.equipmentId.eq(equipment.equipmentId),
 												reservation.status.ne(ReservationStatus.CANCELLED),
-												/*roomSlot.slotStartAt.between(
-														date.atStartOfDay(),
-														date.plusDays(1).atStartOfDay()
-												),*/
-												roomSlot.slotStartAt.lt(reservationInfo.endAt()),
-												roomSlot.slotEndAt.gt(reservationInfo.startAt())
+
+												JPAExpressions
+														.selectOne()
+														.from(reservationRoom)
+														.join(reservationRoom.roomSlot, roomSlot)
+														.where(
+																reservationRoom.reservation.eq(reservation),
+
+																// 시간 겹침 조건
+																roomSlot.slotStartAt.lt(reservationInfo.endAt()),
+																roomSlot.slotEndAt.gt(reservationInfo.startAt())
+														)
+														.exists()
 										)
-						), //대여가능수량
+						),
 						equipment.status,
 						equipment.price
 				))
@@ -108,7 +111,6 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 				)
 				.fetch();
 	}
-
 
 }
 
