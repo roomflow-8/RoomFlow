@@ -73,6 +73,9 @@ public class MeetingRoom extends BaseEntity {
 	public void incrementReservations() {
 		this.totalReservations++;
 	}
+	public void decrementReservations() {
+		this.totalReservations--;
+	}
 
 	private void validateRoomName(String roomName) {
 		if (roomName == null || roomName.isBlank()) {

@@ -48,7 +48,7 @@ public class GlobalViewExceptionHandler {
 		model.addAttribute("message", ErrorCode.INTERNAL_ERROR.getMessage());
 		model.addAttribute("path", request.getRequestURI());
 
-		return "common/error";
+		return "error/error";
 	}
 }
 

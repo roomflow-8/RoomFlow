@@ -7,6 +7,8 @@
     <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
     <script src="https://cdn.tailwindcss.com"></script>
     <th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/4.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body class="min-h-screen bg-[#fafafa]">
 <th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
@@ -21,7 +23,7 @@
 
         <button type="submit"
                 class="inline-flex items-center gap-2 mb-6 text-gray-600 hover:text-black transition-colors">
-            <span>←</span>
+            <i class="fi fi-rr-left leading-none flex items-center"></i>
             <span class="text-[16px]">이전 단계로</span>
         </button>
     </form>

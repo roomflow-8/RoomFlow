@@ -9,6 +9,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" type="text/css" th:href="@{/css/equip-list.css}">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/4.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body class="bg-gray-50 min-h-screen pb-24 xl:pb-0">
 
@@ -25,8 +27,9 @@
         <main class="max-w-7xl mx-auto px-4 py-8">
             <!-- 뒤로가기 버튼 -->
             <button onclick="confirmBack(event)"
-                    class="flex items-center gap-2 mb-6 text-gray-600 hover:text-black transition-colors">
-                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                    type="button"
+                    class="flex items-center gap-2 mb-6 text-gray-600 hover:text-black transition-colors cursor-pointer">
+                <i class="fi fi-rr-left leading-none flex items-center"></i>
                 <span>이전 단계로</span>
             </button>
 

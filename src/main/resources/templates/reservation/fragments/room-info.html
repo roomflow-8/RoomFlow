@@ -1,8 +1,10 @@
 <div th:fragment="roomInfo(reservationRoom)" class="bg-white rounded-xl shadow-sm border">
     <div class="px-6 py-4 border-b flex items-center justify-between">
-        <div class="flex items-center gap-2">
-            <span class="text-blue-600">🏢</span>
-            <h2 class="text-xl font-semibold">회의실 예약 정보</h2>
+        <div class="flex items-center gap-3">
+            <i class="fi fi-rr-building text-blue-600 text-xl leading-none flex items-center"></i>
+            <h2 class=" text-xl font-semibold">
+                회의실 예약 정보
+            </h2>
         </div>
 
         <span th:if="${reservationRoom.reservationStatus.name() == 'CONFIRMED'}"
@@ -46,7 +48,15 @@
 
             <div class="flex justify-between items-center">
                 <span class="text-gray-600">회의실 이용료</span>
-                <span class="font-bold text-lg" th:text="|${#numbers.formatInteger(reservationRoom.roomAmount, 0, 'COMMA')}원|"></span>
+                <div class="flex items-center gap-3">
+                    <span class="text-sm text-gray-500"
+                          th:text="|(${reservationRoom.totalHours}시간 × ${#numbers.formatInteger(reservationRoom.hourlyPrice, 0, 'COMMA')}원/시간)|">
+                    </span>
+
+                    <span class="font-bold text-lg"
+                          th:text="|${#numbers.formatInteger(reservationRoom.roomAmount, 0, 'COMMA')}원|">
+                    </span>
+                </div>
             </div>
         </div>
     </div>

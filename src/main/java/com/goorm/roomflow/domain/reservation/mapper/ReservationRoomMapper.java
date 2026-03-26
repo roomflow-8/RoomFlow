@@ -22,6 +22,8 @@ public interface ReservationRoomMapper {
     @Mapping(target = "reservationDate", source = "reservationDate")
     @Mapping(target = "reservationStatus", source = "reservation.status")
     @Mapping(target = "reservationTimeSlots", source = "reservationTimeSlots")
+    @Mapping(target = "totalHours", source = "totalHours")
+    @Mapping(target = "hourlyPrice", source="meetingRoom.hourlyPrice")
     @Mapping(target = "roomAmount", source = "roomAmount")
     @Mapping(target = "equipments", source = "equipments")
     @Mapping(target = "equipmentAmount", source = "equipmentAmount")
@@ -32,6 +34,7 @@ public interface ReservationRoomMapper {
             List<ReservationTimeSlot> reservationTimeSlots,
             List<EquipmentItem> equipments,
             LocalDate reservationDate,
+            int totalHours,
             BigDecimal roomAmount,
             BigDecimal equipmentAmount,
             BigDecimal totalAmount

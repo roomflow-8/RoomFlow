@@ -126,6 +126,7 @@ public class ReservationServiceImpl implements ReservationService {
 				.map(EquipmentItem::from)
 				.toList();
 
+
 		// 금액 계산
 		BigDecimal roomAmount = calcTotalAmount(meetingRoom.getHourlyPrice(), roomSlots);
 
@@ -145,6 +146,7 @@ public class ReservationServiceImpl implements ReservationService {
 				reservationTimeSlots,
 				equipmentItems,
 				reservationDate,
+				roomSlots.size(),
 				roomAmount,
 				equipmentAmount,
 				totalAmount
@@ -241,6 +243,8 @@ public class ReservationServiceImpl implements ReservationService {
 
 		reservationRoomRepository.saveAll(reservationRooms);
 
+		int totalHours = sortedSlots.size();
+
 		// 7. 슬롯 상태 변경
 		sortedSlots.forEach(roomSlot -> roomSlot.updateActiveStatus(false));
 
@@ -254,6 +258,7 @@ public class ReservationServiceImpl implements ReservationService {
 				reservationTimeSlots,
 				null,
 				reservationDate,
+				totalHours,
 				reservation.getTotalAmount(),
 				BigDecimal.valueOf(0),
 				reservation.getTotalAmount()
@@ -673,6 +678,8 @@ public class ReservationServiceImpl implements ReservationService {
 
 		// 회의실 취소 상태 검증 및 변경
 		reservation.cancel(reason);
+		// 회의실 예약 총 횟수 감소
+		reservation.getMeetingRoom().decrementReservations();
 
 		// 회의실 목록 조회
 		List<ReservationRoom> reservationRooms = reservationRoomRepository.findByReservation(reservation);
