@@ -68,7 +68,6 @@ public class ReservationController {
     @GetMapping("/{reservationId}/equipments")
     public String readAvailableEquipments(@PathVariable Long reservationId, Model model) {
 
-
         try {
 
             // 1. 예약 정보 조회

@@ -29,11 +29,13 @@ import com.goorm.roomflow.domain.user.entity.UserRole;
 import com.goorm.roomflow.domain.user.repository.UserJpaRepository;
 import com.goorm.roomflow.global.code.ErrorCode;
 import com.goorm.roomflow.global.exception.BusinessException;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -41,6 +43,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -57,6 +62,9 @@ public class ReservationServiceImpl implements ReservationService {
 	private final EquipmentRepository equipmentRepository;
 	private final UserJpaRepository userRepository;
 	private final ApplicationEventPublisher eventPublisher;
+	@Resource(name = "equipmentReservationExecutor")
+	private ExecutorService equipmentExecutor;
+	private final TransactionTemplate transactionTemplate;
 
 	@Override
 	public Reservation getReservation(Long reservationId) {
@@ -127,7 +135,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 		BigDecimal totalAmount = equipmentAmount;
 
-		if(reservation.getStatus() == ReservationStatus.PENDING) {
+		if (reservation.getStatus() == ReservationStatus.PENDING) {
 			totalAmount = totalAmount.add(roomAmount);
 		}
 
@@ -247,7 +255,7 @@ public class ReservationServiceImpl implements ReservationService {
 				null,
 				reservationDate,
 				reservation.getTotalAmount(),
-                BigDecimal.valueOf(0),
+				BigDecimal.valueOf(0),
 				reservation.getTotalAmount()
 		);
 
@@ -309,6 +317,103 @@ public class ReservationServiceImpl implements ReservationService {
 				.max(LocalDateTime::compareTo)
 				.orElseThrow();
 
+		// ⏱️ 시간 측정 시작
+		long startTimeMillis = System.currentTimeMillis();
+		log.info("⏱️ 비품 예약 시작 - count: {}", equipmentRequests.size());
+
+		// 2. 병렬로 비품 처리
+		List<CompletableFuture<ReservationEquipment>> futures = equipmentRequests.stream()
+				.map(equipmentReq -> CompletableFuture.supplyAsync(() ->
+						transactionTemplate.execute(status -> {
+							Equipment equipment = equipmentRepository.findByEquipmentIdForUpdate(equipmentReq.equipmentId())
+									.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
+
+							// 3. 비품 상태 확인
+							if (equipment.getStatus() != EquipmentStatus.AVAILABLE) {
+								throw new BusinessException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
+							}
+
+							// 4. 재고 검증
+							validateAvailableStock(
+									equipment.getEquipmentId(),
+									equipmentReq.quantity(),
+									startTime,
+									endTime
+							);
+
+							// 5. 단가와 총액 계산
+							BigDecimal unitPrice = equipmentReq.unitPrice() != null
+									? equipmentReq.unitPrice()
+									: equipment.getPrice();
+
+							BigDecimal totalAmount = unitPrice
+									.multiply(BigDecimal.valueOf(equipmentReq.quantity()));
+
+							// 6. ReservationEquipment 생성
+							ReservationEquipment reservationEquipment = ReservationEquipment.builder()
+									.reservation(reservation)
+									.equipment(equipment)
+									.quantity(equipmentReq.quantity())
+									.status(ReservationStatus.PENDING)
+									.unitPrice(unitPrice)
+									.totalAmount(totalAmount)
+									.build();
+
+							log.debug("비품 예약 생성 - equipment: {}, quantity: {}, amount: {}",
+									equipment.getEquipmentName(), equipmentReq.quantity(), totalAmount);
+
+							return reservationEquipment;
+						}), equipmentExecutor))
+				.collect(Collectors.toList());
+
+		// ⏱️ 시간 측정 종료
+		long endTimeMillis = System.currentTimeMillis();
+		long duration = endTimeMillis - startTimeMillis;
+
+		log.info("⏱️ 비품 예약 완료 - count: {}, 처리시간: {}ms",
+				equipmentRequests.size(), duration);
+
+
+		// 3. 모든 병렬 작업 완료 대기
+		List<ReservationEquipment> reservationEquipments = futures.stream()
+				.map(CompletableFuture::join)
+				.collect(Collectors.toList());
+
+
+		// 7. 저장
+		List<ReservationEquipment> saved = reservationEquipmentRepository.saveAll(reservationEquipments);
+
+		// 8. Reservation 총액 업데이트
+		updateReservationTotalAmount(reservation);
+
+		log.info("비품 예약 추가 완료 - count: {}", saved.size());
+
+		return saved;
+	}
+
+/*
+
+	//
+	private List<ReservationEquipment> createEquipmentReservations(Reservation reservation,
+																   List<RoomSlot> roomSlots,
+																   List<EquipmentReservationReq> equipmentRequests) {
+
+		//1. 예약 시간 범위 계산
+		LocalDateTime startTime = roomSlots.stream()
+				.map(RoomSlot::getSlotStartAt)
+				.min(LocalDateTime::compareTo)
+				.orElseThrow();
+
+		LocalDateTime endTime = roomSlots.stream()
+				.map(RoomSlot::getSlotEndAt)
+				.max(LocalDateTime::compareTo)
+				.orElseThrow();
+
+		log.info("비품 예약 시작 - count: {}, 시간: {} ~ {}",
+				equipmentRequests.size(), startTime, endTime);
+
+
+
 		List<ReservationEquipment> reservationEquipments = new ArrayList<>();
 
 		// 2. 비품 조회
@@ -317,6 +422,11 @@ public class ReservationServiceImpl implements ReservationService {
 			//락 1-2
 			Equipment equipment = equipmentRepository.findByEquipmentIdForUpdate(equipmentReq.equipmentId())
 					.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
+
+		*/
+/*	Equipment equipment = equipmentRepository.findById(equipmentReq.equipmentId())
+					.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));*//*
+
 
 			// 3. 비품 상태 확인
 			if (equipment.getStatus() != EquipmentStatus.AVAILABLE) {
@@ -366,6 +476,8 @@ public class ReservationServiceImpl implements ReservationService {
 		return saved;
 	}
 
+*/
+
 	/**
 	 * 회의실 예약 및 비품 예약을 확정한다.
 	 * - reservationId를 기준으로 Reservation을 조회한 후, 예약과 비품 예약을 Confirmed 상태로 변경한다.
@@ -390,7 +502,7 @@ public class ReservationServiceImpl implements ReservationService {
 			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
 		}
 
-		if(reservation.getStatus() == ReservationStatus.PENDING) {
+		if (reservation.getStatus() == ReservationStatus.PENDING) {
 			// 회의실 예약 확정
 			reservation.confirm(request.memo());
 
@@ -441,25 +553,13 @@ public class ReservationServiceImpl implements ReservationService {
 		log.info("비품 예약 확정 시작 - reservationId: {}, equipmentIds: {}",
 				reservationId, reservationEquipmentIds);
 
-		// 비품 예약 조회 //락2-2
+		// 비품 예약 조회
 		List<ReservationEquipment> reservationEquipments =
-				reservationEquipmentRepository.findAllByIdForUpdate(reservationEquipmentIds);
+				reservationEquipmentRepository.findAllById(reservationEquipmentIds);
 
 		// 요청한 ID 개수와 조회된 개수 비교
 		if (reservationEquipments.size() != reservationEquipmentIds.size()) {
 			throw new BusinessException(ErrorCode.RESERVATION_EQUIPMENT_NOT_FOUND);
-		}
-
-		//equipmentId 추출
-		List<Long> equipmentIds = reservationEquipments.stream()
-				.map(re -> re.getEquipment().getEquipmentId())
-				.distinct()
-				.sorted()
-				.toList();
-
-		// deadlock 방지용 정렬 락2-3
-		for (Long id : equipmentIds) {
-			equipmentRepository.findByEquipmentIdForUpdate(id);
 		}
 
 		for (ReservationEquipment reservationEquipment : reservationEquipments) {
@@ -499,7 +599,6 @@ public class ReservationServiceImpl implements ReservationService {
 					.max(LocalDateTime::compareTo)
 					.orElseThrow();
 
-			//
 			validateAvailableStock(
 					reservationEquipment.getEquipment().getEquipmentId(),
 					reservationEquipment.getQuantity(),
@@ -659,7 +758,7 @@ public class ReservationServiceImpl implements ReservationService {
 		}
 		ReservationStatus fromStatus = reservation.getStatus();
 
-		if(fromStatus == ReservationStatus.PENDING) {
+		if (fromStatus == ReservationStatus.PENDING) {
 			String reason = "이전 상태로 이동";
 
 			// 회의실 취소 상태 검증 및 변경
@@ -863,25 +962,12 @@ public class ReservationServiceImpl implements ReservationService {
 		log.info("비품 예약 취소 시작 - reservationId: {}, equipmentIds: {}, count: {}",
 				reservationId, reservationEquipmentIds, reservationEquipmentIds.size());
 
-		//비품 예약 조회 //락3-2
-		List<ReservationEquipment> reservationEquipments = reservationEquipmentRepository.findAllByIdForUpdate(reservationEquipmentIds);
-
+		//비품 예약 조회
+		List<ReservationEquipment> reservationEquipments = reservationEquipmentRepository.findAllById(reservationEquipmentIds);
 		log.debug("비품 예약 조회 완료 - count: {}", reservationEquipments.size());
 
 		if (reservationEquipments.size() != reservationEquipmentIds.size()) {
 			throw new BusinessException(ErrorCode.RESERVATION_EQUIPMENT_NOT_FOUND);
-		}
-
-		// 정렬: 데드락 방지 (락 순서 고정)
-		List<Long> equipmentIds = reservationEquipments.stream()
-				.map(re -> re.getEquipment().getEquipmentId())
-				.distinct()
-				.sorted()
-				.toList();
-
-		//락3-3 (모든 Equipment 미리 락)
-		for (Long id : equipmentIds) {
-			equipmentRepository.findByEquipmentIdForUpdate(id);
 		}
 
 		for (ReservationEquipment reservationEquipment : reservationEquipments) {
@@ -913,10 +999,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 			// 확정된 비품이었다면 예약 건수 감소
 			if (fromStatus == ReservationStatus.CONFIRMED) {
-				//락 3-3 Equipment
-				Equipment equipment = equipmentRepository.findByEquipmentIdForUpdate(
-						reservationEquipment.getEquipment().getEquipmentId())
-						.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
+				Equipment equipment = reservationEquipment.getEquipment();
 				equipment.decrementReservations();
 			}
 
