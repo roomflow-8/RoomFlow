@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>내 예약 목록 - RoomFlow</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body class="min-h-screen bg-gray-50">
 
 <div th:replace="~{fragments/header :: header}"></div>
-
+<th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
 <!-- 페이지 헤더 -->
 <div class="bg-white border-b border-gray-200">
     <div class="max-w-7xl mx-auto px-6 py-6">
@@ -196,10 +197,16 @@
 
                 <!-- 예정된 예약에만 취소 버튼 -->
                 <div th:if="${activeTab == 'upcoming'}" class="mt-4 pt-4 border-t border-gray-200">
-                    <button type="button"
-                            class="inline-flex items-center justify-center h-[44px] w-full rounded-md border border-red-300 bg-white text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
-                        × 회의실 취소하기
-                    </button>
+                    <form th:action="@{/reservations/{id}/cancel(id=${reservation.reservationId})}"
+                          method="post"
+                          class="cancel-form">
+
+                        <button type="submit"
+                                class="inline-flex items-center justify-center h-[44px] w-full rounded-md border border-red-300 bg-white text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+                            × 회의실 취소하기
+                        </button>
+
+                    </form>
                 </div>
 
             </div>
@@ -209,4 +216,5 @@
 
 </main>
 </body>
+<script th:src="@{/js/reservation-list.js}"></script>
 </html>
