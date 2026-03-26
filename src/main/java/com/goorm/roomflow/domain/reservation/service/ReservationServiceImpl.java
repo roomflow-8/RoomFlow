@@ -340,6 +340,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 							// 4. 재고 검증
 							validateAvailableStock(
+									reservation.getReservationId(),
 									equipment.getEquipmentId(),
 									equipmentReq.quantity(),
 									startTime,
@@ -605,6 +606,7 @@ public class ReservationServiceImpl implements ReservationService {
 					.orElseThrow();
 
 			validateAvailableStock(
+					reservationId,
 					reservationEquipment.getEquipment().getEquipmentId(),
 					reservationEquipment.getQuantity(),
 					startTime,
@@ -842,6 +844,7 @@ public class ReservationServiceImpl implements ReservationService {
 	 * 재고 검증
 	 */
 	private void validateAvailableStock(
+			Long reservationId,
 			Long equipmentId,
 			int requestedQuantity,
 			LocalDateTime startTime,
@@ -851,7 +854,7 @@ public class ReservationServiceImpl implements ReservationService {
 				.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
 
 		int reservedQuantity = reservationEquipmentRepository
-				.calculateReservedQuantity(equipmentId, startTime, endTime);
+				.calculateReservedQuantity(reservationId, equipmentId, startTime, endTime);
 
 		int availableQuantity = equipment.getTotalStock() - reservedQuantity;
 
