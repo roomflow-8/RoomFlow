@@ -28,12 +28,15 @@ public interface ReservationEquipmentRepository extends JpaRepository<Reservatio
 			    JOIN ReservationRoom rr ON rr.reservation = r
 			    JOIN rr.roomSlot rs
 			    WHERE re.equipment.equipmentId = :equipmentId
-			    AND re.status IN ('PENDING', 'CONFIRMED')
-			    AND r.status NOT IN ('CANCELLED', 'EXPIRED')
 			    AND rs.slotStartAt < :endTime
 			    AND rs.slotEndAt > :startTime
+				AND r.status NOT IN ('CANCELLED', 'EXPIRED')
+				AND (re.status = 'CONFIRMED'
+              			OR (re.status = 'PENDING' AND r.reservationId != :reservationId)
+			    )
 			""")
 	int calculateReservedQuantity(
+			@Param("reservationId") Long reservationId,
 			@Param("equipmentId") Long equipmentId,
 			@Param("startTime") LocalDateTime startTime,
 			@Param("endTime") LocalDateTime endTime
