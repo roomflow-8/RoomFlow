@@ -204,4 +204,23 @@ public class ReservationController {
         reservationService.expireReservation(loginUser.getUserId(), reservationId);
         return "redirect:/rooms";
     }
+
+    /**
+     * 회의실 예약 취소하기
+     */
+    @PostMapping("/{reservationId}/cancel")
+    public String cancelReservation(
+            @SessionAttribute(name = "loginUser", required=false) UserTO loginUser,
+            @PathVariable Long reservationId,
+            @ModelAttribute CancelReservationReq request,
+            RedirectAttributes redirectAttributes
+    ) {
+
+        reservationService.cancelReservation(loginUser.getUserId(), reservationId, request);
+
+        redirectAttributes.addFlashAttribute("alertType", "success");
+        redirectAttributes.addFlashAttribute("message", "예약이 취소되었습니다.");
+
+        return "redirect:/users/reservationlist";
+    }
 }

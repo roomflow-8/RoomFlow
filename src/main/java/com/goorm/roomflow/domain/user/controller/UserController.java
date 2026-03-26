@@ -49,7 +49,7 @@ public class UserController {
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
         model.addAttribute("loginUser", loginUser);
-        return "user/UserReservationList";
+        return "user/reservation-list";
     }
 
     // 회원가입 페이지 렌더링
