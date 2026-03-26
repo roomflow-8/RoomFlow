@@ -44,7 +44,14 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
                 meetingRoomRepository.findByStatusIn(
                         RoomStatus.AVAILABLE, RoomStatus.MAINTENANCE);
 
-        LocalDateTime startAt = date.atStartOfDay();
+        LocalDateTime startAt;
+
+        if (date.equals(LocalDate.now())) {
+            startAt = LocalDateTime.now();
+        } else {
+            startAt = date.atStartOfDay();
+        }
+
         LocalDateTime endAt = date.plusDays(1).atStartOfDay();
 
         List<RoomSlot> roomSlots =

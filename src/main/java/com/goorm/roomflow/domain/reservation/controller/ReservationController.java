@@ -155,7 +155,7 @@ public class ReservationController {
                 log.info("PENDING 예약에 비품 {} 개 추가 완료 (승인 대기)", response.equipments().size());
                 redirectAttributes.addFlashAttribute(
                         "message",
-                        "비품이 추가되었습니다. 승인 대기중입니다."
+                        "비품이 추가되었습니다. \n승인 대기중입니다."
                 );
                 return "redirect:/reservations/rooms/" + reservationId;
             } else {

@@ -18,6 +18,8 @@ public record ReservationRoomRes (
         int capacity,
         ReservationStatus reservationStatus,
         List<ReservationTimeSlot> reservationTimeSlots,
+        int totalHours,
+        BigDecimal hourlyPrice,
         BigDecimal roomAmount,
         List<EquipmentItem> equipments,
         BigDecimal equipmentAmount,

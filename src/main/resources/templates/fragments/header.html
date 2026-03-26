@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-
 <body>
 <script src="//cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
 <header th:fragment="header" class="bg-white border-b border-gray-200 px-6 py-4">
@@ -18,7 +17,7 @@
             <nav class="flex items-center gap-4">
                 <!-- 활성 메뉴 -->
                 <a th:href="@{/rooms}"
-                   class="px-3 py-2 text-sm font-medium rounded-md text-black hover:bg-gray-100">
+                   class="px-4 py-2 text-sm font-medium rounded-lg text-black hover:bg-gray-50">
                     회의실 조회
                 </a>
             </nav>
