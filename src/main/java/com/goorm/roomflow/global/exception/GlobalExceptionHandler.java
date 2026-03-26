@@ -1,8 +1,14 @@
 package com.goorm.roomflow.global.exception;
 
+import com.goorm.roomflow.domain.equipment.controller.EquipmentReservationRestController;
+import com.goorm.roomflow.domain.reservation.controller.ReservationController;
+import com.goorm.roomflow.domain.reservation.controller.ReservationRestController;
+import com.goorm.roomflow.domain.room.controller.MeetingRoomRestController;
+import com.goorm.roomflow.domain.user.controller.UserRestController;
 import com.goorm.roomflow.global.code.ErrorCode;
 import com.goorm.roomflow.global.response.ErrorResponse;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -11,7 +17,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.List;
 
-@RestControllerAdvice
+@Slf4j
+@RestControllerAdvice(assignableTypes = {
+		ReservationRestController.class,
+		EquipmentReservationRestController.class,
+		MeetingRoomRestController.class,
+		UserRestController.class,
+})
 public class GlobalExceptionHandler {
 
 
@@ -23,6 +35,8 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
 		ErrorCode errorCode = e.getErrorCode();
+
+		log.warn("BusinessException 발생: code={}, message={}", errorCode.getCode(), errorCode.getMessage(), e);
 
 		return ResponseEntity
 				.status(errorCode.getStatus())
@@ -66,6 +80,9 @@ public class GlobalExceptionHandler {
 	 */
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ErrorResponse> handleException(Exception e) {
+
+		log.error(e.getMessage(), e);
+
 		return ResponseEntity
 				.status(ErrorCode.INTERNAL_ERROR.getStatus())
 				.body(ErrorResponse.of(ErrorCode.INTERNAL_ERROR));
