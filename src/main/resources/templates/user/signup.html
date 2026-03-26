@@ -36,14 +36,41 @@
         <!-- 이메일 -->
         <div class="space-y-2">
             <label for="email" class="block text-sm font-medium text-gray-700">아이디 (이메일)</label>
-            <input type="email"
-                   id="email"
-                   name="email"
-                   th:value="${email}"
-                   placeholder="example@email.com"
-                   class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
-                   required />
-            <p class="text-xs text-gray-500">이메일 인증 기능은 추후 연결 예정입니다.</p>
+            <div class="flex gap-2">
+                <input type="email"
+                       id="email"
+                       name="email"
+                       th:value="${email}"
+                       placeholder="example@email.com"
+                       class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
+                       required />
+                <button type="button"
+                        id="sendCodeBtn"
+                        onclick="sendVerificationCode()"
+                        th:disabled="${emailVerified}"
+                        class="h-[50px] px-4 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 whitespace-nowrap">
+                    <span th:text="${emailVerified} ? '인증완료' : '인증번호 발송'">인증번호 발송</span>
+                </button>
+            </div>
+
+            <!-- 인증번호 입력칸 (발송 후에만 보임) -->
+            <div id="verifySection" class="hidden flex gap-2">
+                <input type="text"
+                       id="verifyCodeInput"
+                       placeholder="인증번호 6자리 입력"
+                       maxlength="6"
+                       class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900" />
+                <button type="button"
+                        onclick="checkVerifyCode()"
+                        class="h-[50px] px-4 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 whitespace-nowrap">
+                    확인
+                </button>
+            </div>
+
+            <!-- 상태 메시지 -->
+            <p id="emailMsg" class="text-xs"
+               th:classappend="${emailVerified} ? 'text-green-600' : ''"
+               th:text="${emailVerified} ? '✓ 이메일 인증이 완료되었습니다.' : ''"></p>
         </div>
 
         <!-- 비밀번호 -->
@@ -81,5 +108,66 @@
     </div>
 </div>
 
+<script>
+    // 인증번호 발송
+    function sendVerificationCode() {
+        const email = document.getElementById('email').value;
+        if (!email) {
+            alert('이메일을 입력해주세요.');
+            return;
+        }
+
+        document.getElementById('sendCodeBtn').disabled = true;
+        document.getElementById('sendCodeBtn').textContent = '발송 중...';
+
+        fetch('/users/email/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'email=' + encodeURIComponent(email)
+        })
+        .then(response => response.text().then(text => ({ ok: response.ok, text })))
+        .then(({ ok, text }) => {
+            const msg = document.getElementById('emailMsg');
+            if (ok) {
+                msg.textContent = '인증번호가 발송되었습니다. 이메일을 확인해주세요.';
+                msg.className = 'text-xs text-blue-600';
+                document.getElementById('verifySection').classList.remove('hidden');
+            } else {
+                msg.textContent = text;
+                msg.className = 'text-xs text-red-500';
+            }
+            document.getElementById('sendCodeBtn').disabled = false;
+            document.getElementById('sendCodeBtn').textContent = '재발송';
+        });
+    }
+
+    // 인증번호 확인
+    function checkVerifyCode() {
+        const code = document.getElementById('verifyCodeInput').value;
+        if (!code) {
+            alert('인증번호를 입력해주세요.');
+            return;
+        }
+
+        fetch('/users/email/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'code=' + encodeURIComponent(code)
+        })
+        .then(response => response.text().then(text => ({ ok: response.ok, text })))
+        .then(({ ok, text }) => {
+            const msg = document.getElementById('emailMsg');
+            if (ok) {
+                msg.textContent = '✓ 이메일 인증이 완료되었습니다.';
+                msg.className = 'text-xs text-green-600';
+                document.getElementById('verifySection').classList.add('hidden');
+                document.getElementById('sendCodeBtn').disabled = true;
+            } else {
+                msg.textContent = text;
+                msg.className = 'text-xs text-red-500';
+            }
+        });
+    }
+</script>
 </body>
 </html>
