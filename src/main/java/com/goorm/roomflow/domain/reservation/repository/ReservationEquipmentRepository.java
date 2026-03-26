@@ -2,8 +2,6 @@ package com.goorm.roomflow.domain.reservation.repository;
 
 import com.goorm.roomflow.domain.reservation.entity.ReservationEquipment;
 import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
-import jakarta.persistence.LockModeType;
-import jakarta.persistence.QueryHint;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
@@ -59,18 +57,6 @@ public interface ReservationEquipmentRepository extends JpaRepository<Reservatio
 	 * 예약 ID로 비품 목록 조회
 	 */
 	List<ReservationEquipment> findByReservation_ReservationId(Long reservationId);
-
-
-	//락2 & 3. confirm, cancel
-	@Lock(LockModeType.PESSIMISTIC_WRITE)
-	@QueryHints({@QueryHint(name="jakarta.persistence.lock.timeout", value = "3000")})
-	@Query("""
-			SELECT re
-			FROM ReservationEquipment re
-			JOIN FETCH re.equipment
-			WHERE re.reservationEquipmentId IN :ids
-			""")
-	List<ReservationEquipment> findAllByIdForUpdate(List<Long> reservationIds);
 
 
 }

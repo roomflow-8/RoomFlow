@@ -86,6 +86,7 @@ public class ReservationRestController {
             @SessionAttribute(name = "loginUser", required=false) UserTO loginUser,
             @PathVariable Long reservationId,
             @RequestBody ConfirmReservationReq request) {
+        log.info("loginUser: {}, reservationId: {}", loginUser.getUserId(), reservationId);
 
         reservationService.confirmReservation(loginUser.getUserId(), reservationId, request);
 
