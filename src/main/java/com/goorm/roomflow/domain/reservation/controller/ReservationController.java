@@ -10,7 +10,6 @@ import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
 import com.goorm.roomflow.domain.reservation.service.ReservationLockFacade;
 import com.goorm.roomflow.domain.reservation.service.ReservationService;
 import com.goorm.roomflow.domain.user.dto.UserTO;
-import com.goorm.roomflow.domain.user.entity.User;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -90,7 +89,7 @@ public class ReservationController {
         }catch (Exception e) {
             log.error("비품 목록 조회 실패: {}", e.getMessage(), e);
             model.addAttribute("errorMessage", e.getMessage());
-            return "common/error";
+            return "5xx";
         }
     }
 
