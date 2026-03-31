@@ -12,5 +12,9 @@ public interface RoomSlotRepository extends JpaRepository<RoomSlot, Long> {
 
     List<RoomSlot> findByMeetingRoom_RoomIdAndRoomSlotIdIn(Long roomId, List<Long> roomSlotIds);
 
-    boolean existsByMeetingRoomAndSlotStartAtAndSlotEndAt(MeetingRoom meetingRoom, LocalDateTime startAt, LocalDateTime endAt);
+    List<RoomSlot> findByMeetingRoomInAndSlotStartAtGreaterThanEqualAndSlotEndAtLessThanEqual(
+            List<MeetingRoom> meetingRooms,
+            LocalDateTime start,
+            LocalDateTime end
+    );
 }
