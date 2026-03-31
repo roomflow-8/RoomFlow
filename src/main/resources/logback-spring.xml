@@ -1,140 +1,74 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-	<include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-	<springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="myapp"/>
-	<property name="LOG_PATH" value="./logs"/>
-	<property name="LOG_PATTERN"
-			  value="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] [%thread] %logger{40} - %msg%n"/>
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="myapp"/>
+    <property name="LOG_PATH" value="./logs"/>
+    <property name="LOG_PATTERN"
+              value="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] [%thread] %logger{40} - %msg%n"/>
 
-	<!-- ============================================ -->
-	<!-- Console Appender - 콘솔 출력                -->
-	<!-- ============================================ -->
-	<!-- 개발 시 실시간 로그 확인용 -->
-	<appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-		<encoder>
-			<pattern>${LOG_PATTERN}</pattern>
-			<charset>UTF-8</charset>
-		</encoder>
-	</appender>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
 
-	<!-- ============================================ -->
-	<!-- File Appender - 일반 로그                   -->
-	<!-- ============================================ -->
-	<!--
-		모든 로그 레벨(DEBUG, INFO, WARN, ERROR)을 파일에 저장
-		콘솔에 출력되는 내용과 동일한 로그를 파일로 기록
+    <!-- 일반 로그 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-file.log</file>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- 날짜-appender이름-인덱스 -->
+            <fileNamePattern>${LOG_PATH}/archive/%d{yyyy-MM-dd}/${APP_NAME}-file-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>10GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
 
-		저장 내용:
-		- 애플리케이션 실행 로그
-		- 비즈니스 로직 로그 (Service, Controller 등)
-		- SQL 쿼리 및 파라미터
-		- Spring Framework 로그
-		- 에러 로그 (ERROR_FILE에도 중복 저장됨)
+    <!-- 에러 로그 -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${APP_NAME}-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- 날짜-appender이름-인덱스 -->
+            <fileNamePattern>${LOG_PATH}/archive/%d{yyyy-MM-dd}/${APP_NAME}-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
 
-		롤링 정책:
-		- 파일 크기 100MB 초과 시 새 파일 생성
-		- 날짜별 폴더에 보관
-		- 최대 30일 보관
-		- 전체 용량 10GB 제한
-	-->
-	<appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>${LOG_PATH}/${APP_NAME}-file.log</file>
-		<encoder>
-			<pattern>${LOG_PATTERN}</pattern>
-			<charset>UTF-8</charset>
-		</encoder>
-		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-			<fileNamePattern>${LOG_PATH}/archive/%d{yyyy-MM-dd}/${APP_NAME}-file-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-			<maxFileSize>100MB</maxFileSize>
-			<maxHistory>30</maxHistory>
-			<totalSizeCap>10GB</totalSizeCap>
-		</rollingPolicy>
-	</appender>
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>false</neverBlock>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="FILE"/>
+    </appender>
 
-	<!-- ============================================ -->
-	<!-- Error File Appender - 에러 로그만            -->
-	<!-- ============================================ -->
-	<!--
-		ERROR 레벨 로그만 별도 저장 (빠른 에러 추적용)
+    <appender name="ASYNC_ERROR" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>256</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>false</neverBlock>
+        <includeCallerData>false</includeCallerData>
+        <appender-ref ref="ERROR_FILE"/>
+    </appender>
 
-		저장 내용:
-		- 예외 발생 로그 및 스택 트레이스
-		- 시스템 에러
-		- 비즈니스 로직 에러
-
-		롤링 정책:
-		- 파일 크기 50MB 초과 시 새 파일 생성
-		- 날짜별 폴더에 보관
-		- 최대 90일 보관 (에러는 오래 보관)
-		- 전체 용량 5GB 제한
-	-->
-	<appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-		<file>${LOG_PATH}/${APP_NAME}-error.log</file>
-		<filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-			<level>ERROR</level>
-		</filter>
-		<encoder>
-			<pattern>${LOG_PATTERN}</pattern>
-			<charset>UTF-8</charset>
-		</encoder>
-		<rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-			<fileNamePattern>${LOG_PATH}/archive/%d{yyyy-MM-dd}/${APP_NAME}-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-			<maxFileSize>50MB</maxFileSize>
-			<maxHistory>90</maxHistory>
-			<totalSizeCap>5GB</totalSizeCap>
-		</rollingPolicy>
-	</appender>
-
-	<!-- ============================================ -->
-	<!-- Async Appenders - 비동기 처리 (성능 향상)   -->
-	<!-- ============================================ -->
-	<!--
-		로그 쓰기를 별도 스레드에서 처리하여 애플리케이션 성능 저하 방지
-
-		동작 방식:
-		- 로그 이벤트를 큐(Queue)에 저장
-		- 백그라운드 스레드가 큐에서 꺼내 파일에 기록
-		- 메인 스레드는 블로킹 없이 즉시 다음 작업 수행
-
-		설정:
-		- queueSize: 큐 크기 (대기 가능한 로그 개수)
-		- discardingThreshold: 0 (로그 버리지 않음)
-		- neverBlock: false (큐 가득 차면 대기)
-		- includeCallerData: false (성능 최적화)
-	-->
-	<appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
-		<queueSize>512</queueSize>
-		<discardingThreshold>0</discardingThreshold>
-		<neverBlock>false</neverBlock>
-		<includeCallerData>false</includeCallerData>
-		<appender-ref ref="FILE"/>
-	</appender>
-
-	<appender name="ASYNC_ERROR" class="ch.qos.logback.classic.AsyncAppender">
-		<queueSize>256</queueSize>
-		<discardingThreshold>0</discardingThreshold>
-		<neverBlock>false</neverBlock>
-		<includeCallerData>false</includeCallerData>
-		<appender-ref ref="ERROR_FILE"/>
-	</appender>
-
-	<!-- ============================================ -->
-	<!-- Root Logger                                 -->
-	<!-- ============================================ -->
-	<!--
-		기본 로그 레벨: INFO
-		개별 패키지 로그 레벨은 application.yml에서 관리
-
-		출력 대상:
-		- CONSOLE: 콘솔 화면 (실시간 확인용)
-		- ASYNC_FILE: 전체 로그 파일 (모든 레벨)
-		- ASYNC_ERROR: 에러 로그 파일 (ERROR만)
-	-->
-	<root level="INFO">
-		<appender-ref ref="CONSOLE"/>
-		<appender-ref ref="ASYNC_FILE"/>
-		<appender-ref ref="ASYNC_ERROR"/>
-	</root>
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ASYNC_FILE"/>
+        <appender-ref ref="ASYNC_ERROR"/>
+    </root>
 
 </configuration>

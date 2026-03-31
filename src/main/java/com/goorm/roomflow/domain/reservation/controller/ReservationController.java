@@ -31,19 +31,32 @@ public class ReservationController {
 	private final ReservationLockFacade reservationLockFacade;
 	private final EquipmentService equipmentService;
 
-	/**
-	 * 회의실 예약 생성 처리
-	 */
-	@PostMapping
-	public String createRoomReservation(
-			@SessionAttribute(name = "loginUser", required = false) UserTO loginUser,
-			@ModelAttribute CreateReservationRoomReq request) {
 
-		Long reservationId = reservationLockFacade.createReservationRoom(loginUser.getUserId(), request).reservationId();
 
-		return "redirect:/reservations/rooms/" + reservationId;
-	}
+  /**
+     * 회의실 예약 생성 처리
+     */
+    @PostMapping
+    public String createRoomReservation(
+            @SessionAttribute(name="loginUser", required=false) UserTO loginUser,
+            @ModelAttribute CreateReservationRoomReq request,
+            RedirectAttributes redirectAttributes) {
 
+        try {
+            Long reservationId = reservationLockFacade.createReservationRoom(loginUser.getUserId(), request).reservationId();
+
+            return "redirect:/reservations/rooms/" + reservationId;
+        } catch (BusinessException e) {
+            redirectAttributes.addFlashAttribute("alertType", "error");
+            redirectAttributes.addFlashAttribute("message", e.
+                    getMessage());
+
+            return "redirect:/rooms";
+        }
+
+    }
+  
+  
 	/**
 	 * 회의실 예약 확인 페이지 조회
 	 */
