@@ -86,6 +86,9 @@ public class ReservationServiceImpl implements ReservationService {
 	@Override
 	@Transactional(readOnly = true)
 	public ReservationRoomRes readReservationRoom(Long userId, Long reservationId) {
+		long start = System.currentTimeMillis();
+
+		log.info("회의실 예약 조회 시작 - userId={}, reservationId={}", userId, reservationId);
 
 		// 1. 회원 조회
 		User user = userRepository.findById(userId)
@@ -98,6 +101,10 @@ public class ReservationServiceImpl implements ReservationService {
 		// 3. 권한 검증
 		if (user.getRole().equals(UserRole.USER)
 				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+
+			log.warn("예약 조회 권한 없음 - userId={}, reservationId={}, reservationOwnerId={}",
+					userId, reservationId, reservation.getUser().getUserId());
+
 			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
 		}
 
@@ -105,6 +112,8 @@ public class ReservationServiceImpl implements ReservationService {
 		List<ReservationRoom> reservationRooms = reservationRoomRepository.findByReservation(reservation);
 
 		if (reservationRooms.isEmpty()) {
+			log.warn("예약된 회의실 정보 없음 - reservationId={}", reservationId);
+
 			throw new BusinessException(ErrorCode.RESERVATION_NOT_FOUND);
 		}
 
@@ -140,6 +149,13 @@ public class ReservationServiceImpl implements ReservationService {
 			totalAmount = totalAmount.add(roomAmount);
 		}
 
+		long elapsed = System.currentTimeMillis() - start;
+		log.info("회의실 예약 조회 완료 - reservationId={}, slotCount={}, equipmentCount={}, elapsedMs={}",
+				reservationId,
+				roomSlots.size(),
+				equipmentItems.size(),
+				elapsed);
+
 		return reservationRoomMapper.toReservationRoomRes(
 				reservation,
 				meetingRoom,
@@ -169,6 +185,10 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Transactional
 	public ReservationRoomRes createReservationRoomTransactional(Long userId, CreateReservationRoomReq request) {
+		long start = System.currentTimeMillis();
+
+		log.info("회의실 예약 생성 시작 - userId={}, roomId={}, slotIds={}, idempotencyKey={}",
+				userId, request.roomId(), request.roomSlotIds(), request.idempotencyKey());
 
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
@@ -178,11 +198,14 @@ public class ReservationServiceImpl implements ReservationService {
 				.orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND));
 
 		if (meetingRoom.getStatus() != RoomStatus.AVAILABLE) {
+			log.warn("예약 불가 회의실 - roomId={}, status={}", meetingRoom.getRoomId(), meetingRoom.getStatus());
 			throw new BusinessException(ErrorCode.ROOM_NOT_AVAILABLE);
 		}
 
 		// 2. 멱등키 중복 체크
 		if (reservationRepository.existsByIdempotencyKey(request.idempotencyKey())) {
+			log.warn("중복 예약 요청 감지 - userId={}, slotIds={}, idempotencyKey={}",
+					userId, request.roomSlotIds(), request.idempotencyKey());
 			throw new BusinessException(ErrorCode.DUPLICATE_RESERVATION_REQUEST);
 		}
 
@@ -192,6 +215,9 @@ public class ReservationServiceImpl implements ReservationService {
 
 		// 3-1. 슬롯 예외 처리
 		if (roomSlots.size() != request.roomSlotIds().size()) {
+			log.warn("슬롯 조회 불일치 - roomId={}, requestedSlotIds={}, foundSlotCount={}",
+					request.roomId(), request.roomSlotIds(), roomSlots.size());
+
 			throw new BusinessException(ErrorCode.ROOM_SLOT_NOT_FOUND);
 		}
 
@@ -205,13 +231,13 @@ public class ReservationServiceImpl implements ReservationService {
 				.anyMatch(slot -> !slot.isActive());
 
 		if (hasUnavailableSlot) {
+			log.warn("이미 예약된 슬롯 포함 - roomId={}, slotIds={}", request.roomId(), request.roomSlotIds());
 			throw new BusinessException(ErrorCode.RESERVATION_ALREADY_EXISTS);
 		}
 
 		// 4. 금액 계산
 		BigDecimal totalAmount = calcTotalAmount(meetingRoom.getHourlyPrice(), roomSlots);
 
-		log.info("예약 생성");
 		// 5. 예약 생성
 		Reservation reservation = new Reservation(
 				user,
@@ -221,7 +247,8 @@ public class ReservationServiceImpl implements ReservationService {
 
 		reservationRepository.save(reservation);
 
-		log.info("예약 History");
+		log.info("예약 엔티티 저장 완료 - reservationId={}, roomId={}",
+				reservation.getReservationId(), meetingRoom.getRoomId());
 
 		// 5-1. 예약 history 발행
 		publishReservationStatusChangedEvent(
@@ -243,13 +270,23 @@ public class ReservationServiceImpl implements ReservationService {
 
 		reservationRoomRepository.saveAll(reservationRooms);
 
+		log.info("회의실 예약 엔티티 저장 완료 - reservationId={}, reservationRoomCount={}",
+				reservation.getReservationId(), reservationRooms.size());
+
 		int totalHours = sortedSlots.size();
 
 		// 7. 슬롯 상태 변경
 		sortedSlots.forEach(roomSlot -> roomSlot.updateActiveStatus(false));
 
+		log.info("슬롯 비활성화 완료 - reservationId={}, slotIds={}",
+				reservation.getReservationId(), request.roomSlotIds());
+
 		// 8. 슬롯 정리
 		List<ReservationTimeSlot> reservationTimeSlots = makeReservationTimeSlot(sortedSlots);
+
+		long elapsed = System.currentTimeMillis() - start;
+		log.info("회의실 예약 생성 완료 - reservationId={}, userId={}, elapsedMs={}",
+				reservation.getReservationId(), userId, elapsed);
 
 		// 9. 결과 반환
 		return reservationRoomMapper.toReservationRoomRes(

@@ -36,11 +36,21 @@ public class ReservationController {
     @PostMapping
     public String createRoomReservation(
             @SessionAttribute(name="loginUser", required=false) UserTO loginUser,
-            @ModelAttribute CreateReservationRoomReq request) {
+            @ModelAttribute CreateReservationRoomReq request,
+            RedirectAttributes redirectAttributes) {
 
-        Long reservationId = reservationLockFacade.createReservationRoom(loginUser.getUserId(), request).reservationId();
+        try {
+            Long reservationId = reservationLockFacade.createReservationRoom(loginUser.getUserId(), request).reservationId();
 
-        return "redirect:/reservations/rooms/" + reservationId;
+            return "redirect:/reservations/rooms/" + reservationId;
+        } catch (BusinessException e) {
+            redirectAttributes.addFlashAttribute("alertType", "error");
+            redirectAttributes.addFlashAttribute("message", e.
+                    getMessage());
+
+            return "redirect:/rooms";
+        }
+
     }
 
     /**

@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
             dateFormat: "Y-m-d",
             defaultDate: selectedDate,
             minDate: "today",
-            maxDate: new Date().fp_incr(30),
+            maxDate: new Date().fp_incr(31),
             monthSelectorType: "static",
             onChange: function (selectedDates, dateStr) {
                 hiddenInput.value = dateStr;
