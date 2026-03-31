@@ -14,12 +14,6 @@ public interface ReservationEquipmentRepository extends JpaRepository<Reservatio
 	/**
 	 * 특정 시간대에 예약된 비품 수량 계산 (CANCELLED, EXPIRED 제외)
 	 * - Service Layer에서 재고 검증 시 사용
-	 * <p>
-	 * 수정 전:
-	 * AND re.status NOT IN ('CANCELLED', 'EXPIRED')
-	 * ->
-	 * 수정 후:
-	 * AND re.status IN ('PENDING', 'CONFIRMED')
 	 */
 	@Query("""
 			    SELECT COALESCE(SUM(re.quantity), 0)
@@ -32,7 +26,7 @@ public interface ReservationEquipmentRepository extends JpaRepository<Reservatio
 			    AND rs.slotEndAt > :startTime
 				AND r.status NOT IN ('CANCELLED', 'EXPIRED')
 				AND (re.status = 'CONFIRMED'
-              			OR (re.status = 'PENDING' AND r.reservationId != :reservationId)
+			           			OR (re.status = 'PENDING' AND r.reservationId != :reservationId)
 			    )
 			""")
 	int calculateReservedQuantity(
@@ -62,4 +56,32 @@ public interface ReservationEquipmentRepository extends JpaRepository<Reservatio
 	List<ReservationEquipment> findByReservation_ReservationId(Long reservationId);
 
 
+	/**
+	 * 비품 예약 ID 목록으로 조회
+	 */
+	@Query("""
+			SELECT re
+			FROM ReservationEquipment re
+			JOIN FETCH re.reservation r
+			WHERE re.reservationEquipmentId IN :reservationEquipmentIds
+			""")
+	List<ReservationEquipment> findAllByIdWithReservation(
+			@Param("reservationEquipmentIds") List<Long> reservationEquipmentIds
+	);
+
+	/**
+	 * 만료 대상 비품 예약 조회
+	 * PENDING 상태이고 생성 시간이 threshold 이전인 것
+	 */
+	@Query("""
+        SELECT re
+        FROM ReservationEquipment re
+        JOIN FETCH re.reservation r
+        WHERE re.status = :status
+          AND re.createdAt <= :threshold
+        """)
+	List<ReservationEquipment> findExpiredPendingEquipments(
+			@Param("status") ReservationStatus status,
+			@Param("threshold") LocalDateTime threshold
+	);
 }

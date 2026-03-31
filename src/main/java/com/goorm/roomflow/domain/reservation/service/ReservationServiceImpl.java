@@ -931,7 +931,17 @@ public class ReservationServiceImpl implements ReservationService {
 	}
 
 
-	// 비품 예약 상태 변화 이벤트 발행
+
+	/**
+	 * 비품 예약 상태 변경 이벤트 발행
+	 *
+	 * @param reservation 예약
+	 * @param equipmentReservationId 비품 예약 ID
+	 * @param fromStatus 이전 상태
+	 * @param toStatus 변경된 상태
+	 * @param changedBy 변경자
+	 * @param reason 변경 사유
+	 */
 	private void publishEquipmentsReservationStatusChangedEvent(
 			Reservation reservation,
 			Long equipmentReservationId,
@@ -1035,6 +1045,60 @@ public class ReservationServiceImpl implements ReservationService {
 		log.info("비품 예약 취소 완료 - count: {}", reservationEquipments.size());
 
 	}
+
+
+	@Override
+	@Transactional
+	public void expirePendingEquipments(List<Long> reservationEquipmentIds, Long changedByUserId) {
+
+		if (reservationEquipmentIds == null || reservationEquipmentIds.isEmpty()) {
+			log.info("expire 대상 없음");
+			return;
+		}
+
+		log.info("비품 예약 expire 시작 - ids: {}, count: {}, changedBy: {}",
+				reservationEquipmentIds,
+				reservationEquipmentIds.size(),
+				changedByUserId);
+
+
+		// user 조회
+		User changedBy = userRepository.findById(changedByUserId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+		String reason = "이전 단계 이동";
+
+		List<ReservationEquipment> reservationEquipments =
+				reservationEquipmentRepository.findAllByIdWithReservation(reservationEquipmentIds);
+
+
+		List<ReservationEquipment> pendingEquipments = reservationEquipments.stream()
+				.filter(equipments -> equipments.getStatus() == ReservationStatus.PENDING)
+				.toList();
+
+		pendingEquipments.forEach(equipment -> {
+			Reservation reservation = equipment.getReservation();
+			ReservationStatus fromStatus = equipment.getStatus();
+
+			equipment.expire(reason);
+
+			publishEquipmentsReservationStatusChangedEvent(
+					reservation,
+					equipment.getReservationEquipmentId(),
+					fromStatus,
+					equipment.getStatus(),
+					changedBy,
+					reason
+			);
+		});
+
+		log.info("비품 예약 expire 완료 - 처리: {}/{}",
+				pendingEquipments.size(),
+				reservationEquipments.size());
+
+
+	}
+
 }
 
 

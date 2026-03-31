@@ -1,10 +1,8 @@
 package com.goorm.roomflow.domain.reservation.scheduler;
 
-import com.goorm.roomflow.domain.reservation.entity.Reservation;
-import com.goorm.roomflow.domain.reservation.entity.ReservationRoom;
-import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
-import com.goorm.roomflow.domain.reservation.entity.TargetType;
+import com.goorm.roomflow.domain.reservation.entity.*;
 import com.goorm.roomflow.domain.reservation.event.ReservationStatusChangedEvent;
+import com.goorm.roomflow.domain.reservation.repository.ReservationEquipmentRepository;
 import com.goorm.roomflow.domain.reservation.repository.ReservationRepository;
 import com.goorm.roomflow.domain.reservation.repository.ReservationRoomRepository;
 import com.goorm.roomflow.domain.room.entity.RoomSlot;
@@ -29,6 +27,7 @@ public class ReservationExpirationScheduler {
 
     private final ReservationRepository reservationRepository;
     private final ReservationRoomRepository reservationRoomRepository;
+    private final ReservationEquipmentRepository reservationEquipmentRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserJpaRepository userRepository;
 
@@ -72,4 +71,98 @@ public class ReservationExpirationScheduler {
             ));
         }
     }
+
+
+    /**
+     * PENDING 상태 비품 예약 자동 만료
+     * - 매 1분마다 실행
+     * - PENDING 상태이고 10분 이상 경과한 비품 예약을 EXPIRED로 변경
+     */
+    @Scheduled(cron = "0 * * * * *")
+    @Transactional
+    public void expirePendingEquipments() {
+        log.info("====== 비품 예약 자동 만료 스케줄러 시작 ======");
+
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(PENDING_MINUTES);
+
+        // 만료 대상 조회
+        List<ReservationEquipment> expiredEquipments =
+                reservationEquipmentRepository.findExpiredPendingEquipments(
+                        ReservationStatus.PENDING,
+                        threshold
+                );
+
+        if (expiredEquipments.isEmpty()) {
+            log.info("만료 대상 없음");
+            log.info("====== 비품 예약 자동 만료 스케줄러 종료 ======");
+            return;
+        }
+
+        // 만료 대상 ID 목록
+        List<Long> equipmentIds = expiredEquipments.stream()
+                .map(ReservationEquipment::getReservationEquipmentId)
+                .toList();
+
+        log.info("만료 대상 비품 예약 발견 - {}건, IDs: {}",
+                expiredEquipments.size(),
+                equipmentIds);
+
+        String reason = "시간 초과로 자동 만료";
+
+        // 각 비품 예약 만료 처리
+        expiredEquipments.forEach(equipment -> {
+            try {
+                ReservationStatus fromStatus = equipment.getStatus();
+
+                equipment.expire(reason);
+
+                log.info("비품 예약 자동 만료 - equipmentId: {}, reservationId: {}",
+                        equipment.getReservationEquipmentId(),
+                        equipment.getReservation().getReservationId());
+
+                // 이벤트 발행
+                publishStatusChangedEvent(equipment, fromStatus, null, reason);
+
+            } catch (Exception e) {
+                log.error("비품 예약 만료 실패 - equipmentId: {}",
+                        equipment.getReservationEquipmentId(), e);
+            }
+        });
+
+        log.info("비품 예약 만료 처리 완료 - 처리: {}건, IDs: {}",
+                expiredEquipments.size(),
+                equipmentIds);
+        log.info("====== 비품 예약 자동 만료 스케줄러 종료 ======");
+    }
+
+
+    /**
+     * 상태 변경 이벤트 발행
+     */
+    private void publishStatusChangedEvent(
+            ReservationEquipment equipment,
+            ReservationStatus fromStatus,
+            User changedBy,
+            String reason
+    ) {
+        if (fromStatus == equipment.getStatus()) {
+            return;
+        }
+
+        eventPublisher.publishEvent(new ReservationStatusChangedEvent(
+                equipment.getReservation(),
+                TargetType.EQUIPMENT,
+                equipment.getReservationEquipmentId(),
+                fromStatus,
+                equipment.getStatus(),
+                changedBy,  // null 가능 (시스템 자동 처리)
+                reason
+        ));
+    }
 }
+
+
+
+
+
+
