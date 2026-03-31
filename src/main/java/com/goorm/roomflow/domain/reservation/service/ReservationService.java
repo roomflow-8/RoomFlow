@@ -25,4 +25,6 @@ public interface ReservationService {
     void cancelReservation(Long userId, Long reservationId, CancelReservationReq request);
     void expireReservation(Long userId, Long reservationId);
     void cancelReservationEquipments(Long reservationId, CancelReservationEquipmentsReq request);
+
+    void expirePendingEquipments(List<Long> reservationEquipmentIds, Long changedByUserId);
 }

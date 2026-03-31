@@ -21,6 +21,12 @@
           method="post"
           onsubmit="return confirmGoBack(event, this)">
 
+        <th:block th:each="equipment : ${reservationRoom.equipments}">
+            <input type="hidden"
+                   name="reservationEquipmentIds"
+                   th:value="${equipment.reservationEquipmentId}">
+        </th:block>
+
         <button type="submit"
                 class="inline-flex items-center gap-2 mb-6 text-gray-600 hover:text-black transition-colors">
             <i class="fi fi-rr-left leading-none flex items-center"></i>

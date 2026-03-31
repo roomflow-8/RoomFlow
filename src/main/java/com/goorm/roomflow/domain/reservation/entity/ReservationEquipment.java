@@ -1,6 +1,8 @@
 package com.goorm.roomflow.domain.reservation.entity;
 
 import com.goorm.roomflow.domain.equipment.entity.Equipment;
+import com.goorm.roomflow.global.code.ErrorCode;
+import com.goorm.roomflow.global.exception.BusinessException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -64,7 +66,7 @@ public class ReservationEquipment {
 								BigDecimal unitPrice, BigDecimal totalAmount) {
 		// 수량 검증 (CHECK 제약조건)
 		if (quantity <= 0) {
-			throw new IllegalArgumentException("수량은 1개 이상이어야 합니다.");
+			throw new BusinessException(ErrorCode.EQUIPMENT_ILLEGAL_ARGUMENT);
 		}
 
 		this.reservation = reservation;
@@ -84,13 +86,15 @@ public class ReservationEquipment {
 
 	public void confirm() {
 		if (this.status != ReservationStatus.PENDING) {
-			throw new IllegalStateException("PENDING 상태만 확정할 수 있습니다.");
+			throw new BusinessException(ErrorCode.INVALID_RESERVATION_STATUS);
 		}
 		this.status = ReservationStatus.CONFIRMED;
 	}
 
-	public void expire() {
+	public void expire(String reason) {
 		this.status = ReservationStatus.EXPIRED;
+		this.cancelReason = reason;
+		this.cancelledAt = LocalDateTime.now();
 	}
 
 }

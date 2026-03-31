@@ -12,6 +12,7 @@ import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
 import com.goorm.roomflow.domain.room.entity.QMeetingRoom;
 import com.goorm.roomflow.domain.room.entity.QRoomSlot;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -65,14 +66,6 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 		return reservationInfo;
 	}
 
-	/*
-재고계산 서브쿼리 where 조건 수정 확인.
-수정 이전: reservation.status.ne(ReservationStatus.CANCELLED),
-	->
-수정 이후:
-reservationEquipment.status.in(ReservationStatus.PENDING, ReservationStatus.CONFIRMED),
-reservation.status.notIn(ReservationStatus.CANCELLED, ReservationStatus.EXPIRED),
-	 */
 	private List<EquipmentAvailabilityDto> getAvailableEquipments(ReservationInfoDto reservationInfo) {
 
 		QEquipment equipment = QEquipment.equipment;
@@ -81,42 +74,47 @@ reservation.status.notIn(ReservationStatus.CANCELLED, ReservationStatus.EXPIRED)
 		QReservationRoom reservationRoom = QReservationRoom.reservationRoom;
 		QRoomSlot roomSlot = QRoomSlot.roomSlot;
 
+		NumberExpression<Integer> availableStock =
+				equipment.totalStock.subtract(
+						JPAExpressions
+								.select(reservationEquipment.quantity.sum().coalesce(0))
+								.from(reservationEquipment)
+								.join(reservationEquipment.reservation, reservation)
+								.where(
+										reservationEquipment.equipment.equipmentId.eq(equipment.equipmentId),
+										reservationEquipment.status.in(ReservationStatus.PENDING, ReservationStatus.CONFIRMED),
+										reservation.status.notIn(ReservationStatus.CANCELLED, ReservationStatus.EXPIRED),
+										JPAExpressions
+												.selectOne()
+												.from(reservationRoom)
+												.join(reservationRoom.roomSlot, roomSlot)
+												.where(
+														reservationRoom.reservation.eq(reservation),
+														roomSlot.slotStartAt.lt(reservationInfo.endAt()),
+														roomSlot.slotEndAt.gt(reservationInfo.startAt())
+												)
+												.exists()
+								)
+				);
+
+
 		return jpaQueryFactory
 				.select(new QEquipmentAvailabilityDto(
 						equipment.equipmentId,
 						equipment.equipmentName,
 						equipment.imageUrl,
 						equipment.totalStock,
-						equipment.totalStock.subtract(
-								JPAExpressions
-										.select(reservationEquipment.quantity.sum().coalesce(0))
-										.from(reservationEquipment)
-										.join(reservationEquipment.reservation, reservation)
-										.where(
-												reservationEquipment.equipment.equipmentId.eq(equipment.equipmentId),
-												reservationEquipment.status.in(ReservationStatus.PENDING, ReservationStatus.CONFIRMED),
-												reservation.status.notIn(ReservationStatus.CANCELLED, ReservationStatus.EXPIRED),
-
-												JPAExpressions
-														.selectOne()
-														.from(reservationRoom)
-														.join(reservationRoom.roomSlot, roomSlot)
-														.where(
-																reservationRoom.reservation.eq(reservation),
-
-																// 시간 겹침 조건 //1건의 예약에서 여러 타임의 slot을 예약시 1번만 계산.
-																roomSlot.slotStartAt.lt(reservationInfo.endAt()),
-																roomSlot.slotEndAt.gt(reservationInfo.startAt())
-														)
-														.exists()
-										)
-						),
+						availableStock,
 						equipment.status,
 						equipment.price
 				))
 				.from(equipment)
 				.where(
 						equipment.status.eq(EquipmentStatus.AVAILABLE)
+				)
+				.orderBy(
+						availableStock.desc(),       // 재고 많은 순
+						equipment.equipmentName.asc()
 				)
 				.fetch();
 	}
