@@ -23,8 +23,8 @@ public class SecurityConfig {
 	private final FormLoginSuccessHandler formLoginSuccessHandler;
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		http
+	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
+		httpSecurity
 			.csrf(csrf -> csrf.disable())
 			.sessionManagement(session -> session
 				.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
@@ -62,7 +62,7 @@ public class SecurityConfig {
 				.successHandler(oAuth2SuccessHandler)
 			);
 
-		return http.build();
+		return httpSecurity.build();
 	}
 
 	@Bean
