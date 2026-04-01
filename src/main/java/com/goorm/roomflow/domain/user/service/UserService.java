@@ -242,7 +242,7 @@ public class UserService {
     }
 
     // 같은 날짜 + 같은 회의실 예약을 하나의 카드로 그룹핑
-    private List<UserReservationDTO> groupByRoomAndDate(List<UserReservationDTO> dtos) {
+   /* private List<UserReservationDTO> groupByRoomAndDate(List<UserReservationDTO> dtos) {
         Map<String, List<UserReservationDTO>> grouped = dtos.stream()
                 .collect(Collectors.groupingBy(dto -> {
                     String date = dto.slotStartAt() != null
@@ -257,7 +257,7 @@ public class UserService {
                         dto -> dto.slotStartAt() != null ? dto.slotStartAt() : LocalDateTime.MIN
                 ))
                 .toList();
-    }
+    }*/
 
     // 같은 그룹으로 묶인 예약들을 하나의 DTO로 합산
     private UserReservationDTO mergeGroup(List<UserReservationDTO> group) {
