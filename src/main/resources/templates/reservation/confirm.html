@@ -42,7 +42,7 @@
             <div class="lg:col-span-2 space-y-6">
                 <div th:replace="~{reservation/fragments/room-info :: roomInfo(${reservationRoom})}"></div>
 
-                <th:block th:if="${reservationRoom.reservationStatus != 'CONFIRMED'}">
+                <th:block th:if="${reservationRoom.reservationStatus.name() != 'CONFIRMED'}">
                     <div th:replace="~{reservation/fragments/purpose :: purpose}"></div>
                 </th:block>
 

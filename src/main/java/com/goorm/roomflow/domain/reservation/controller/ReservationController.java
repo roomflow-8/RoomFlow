@@ -147,33 +147,11 @@ public class ReservationController {
 
 			log.info("비품 추가 완료 - {} 종류", response.equipments().size());
 
-			// 5. 예약 상태에 따라 분기
-			if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
-				List<Long> equipmentIds = response.equipments().stream()
-						.map(e -> e.reservationEquipmentId())
-						.toList();
-
-				reservationService.confirmEquipmentsService(reservationId, equipmentIds);
-
-				redirectAttributes.addFlashAttribute(
-						"message",
-						"비품이 예약에 추가되었습니다."
-				);
-
-				return "redirect:/reservations/rooms/" + reservationId;
-
-			} else if (reservation.getStatus() == ReservationStatus.PENDING) {
-
-				log.info("PENDING 예약에 비품 {} 개 추가 완료 (승인 대기)", response.equipments().size());
-				redirectAttributes.addFlashAttribute(
-						"message",
-						"비품이 추가되었습니다. \n승인 대기중입니다."
-				);
-				return "redirect:/reservations/rooms/" + reservationId;
-			} else {
-				log.warn("처리 불가능한 예약 상태: {}", currentStatus);
-				return "redirect:/rooms";
-			}
+			redirectAttributes.addFlashAttribute(
+					"message",
+					"비품이 추가되었습니다. \n승인 대기중입니다."
+			);
+			return "redirect:/reservations/rooms/" + reservationId;
 
 		} catch (Exception e) {
 			log.error("비품 예약 처리 중 예외 발생: {}", e.getMessage(), e);
