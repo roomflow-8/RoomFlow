@@ -39,7 +39,6 @@ public enum ErrorCode {
 	RESERVATION_EQUIPMENT_CANCELLED(HttpStatus.BAD_REQUEST, "RESERVATION_011", "이미 취소된 비품 예약입니다."),
   	ALREADY_PROCESSING_RESERVATION(HttpStatus.CONFLICT, "RESERVATION_012", "이미 해당 시간대 예약이 진행 중입니다."),
 	RESERVATION_FORBIDDEN(HttpStatus.FORBIDDEN, "RESERVATION_013", "해당 예약에 대한 권한이 없습니다."),
-	RESERVATION_EQUIPMENT_CANCEL_FAILED(HttpStatus.BAD_REQUEST, "RESERVATION_014", "비품 예약을 취소할 수 없습니다."),
 	// 비품
 	EQUIPMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EQUIPMENT_001", "비품이 존재하지 않습니다."),
 	EQUIPMENT_OUT_OF_STOCK(HttpStatus.CONFLICT, "EQUIPMENT_002", "비품 재고가 부족합니다."),
