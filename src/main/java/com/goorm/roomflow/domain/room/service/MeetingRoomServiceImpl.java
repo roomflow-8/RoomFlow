@@ -17,7 +17,14 @@ import com.goorm.roomflow.domain.room.repository.RoomSlotBulkRepository;
 import com.goorm.roomflow.domain.room.repository.RoomSlotRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.jdbc.CannotGetJdbcConnectionException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -121,21 +128,43 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
 
     /**
      * 예약 가능한/점검중 회의실에 대해 특정 날짜의 시간 슬롯 생성
-     *
+     * - 예외 상황에 대하여 재시도 3회, 대기시간 1초 -> 2초 -> 4초
+     * - 재시도 정책 : DB 연결 실패, DB 락 흭득 실패, 비관적 락 충돌
      * @param targetDate 슬롯 생성 날짜
      */
+    @Retryable(
+            retryFor = {
+                    CannotCreateTransactionException.class,
+                    CannotAcquireLockException.class,
+                    PessimisticLockingFailureException.class,
+                    CannotGetJdbcConnectionException.class
+            },
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 1000, multiplier = 2)
+    )
     @Override
     @Transactional
     public void generateSlots(LocalDate targetDate) {
 
         log.info("전체 회의실 슬롯 생성 시작: targetDate={}", targetDate);
 
-        // 예약 가능한 or 점검 중 회의실 조회
-        List<MeetingRoom> meetingRooms = meetingRoomRepository.findByStatusIn(RoomStatus.AVAILABLE, RoomStatus.MAINTENANCE);
+        try {
+            List<MeetingRoom> meetingRooms =
+                    meetingRoomRepository.findByStatusIn(RoomStatus.AVAILABLE, RoomStatus.MAINTENANCE);
 
-        generateSlotsForMeetingRooms(meetingRooms, targetDate);
+            generateSlotsForMeetingRooms(meetingRooms, targetDate);
 
-        log.info("전체 회의실 슬롯 생성 완료: targetDate={}, roomCount={}", targetDate, meetingRooms.size());
+            log.info("전체 회의실 슬롯 생성 완료: targetDate={}, roomCount={}", targetDate, meetingRooms.size());
+        } catch (Exception e) {
+            log.warn("슬롯 생성 재시도 발생: targetDate={}, error={}", targetDate, e.getClass().getSimpleName());
+            throw e;
+        }
+    }
+
+    // 최종 실패시 로직
+    @Recover
+    public void recover(Exception e, LocalDate targetDate) {
+        log.error("전체 회의실 슬롯 생성 최종 실패: targetDate={}", targetDate, e);
     }
 
     /**

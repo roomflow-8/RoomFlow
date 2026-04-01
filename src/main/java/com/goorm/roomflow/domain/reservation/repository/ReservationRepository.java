@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
     boolean existsByIdempotencyKey(String idempotencyKey);
@@ -25,4 +26,13 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     @Query("select r from Reservation r join fetch r.meetingRoom where r.user.userId = :userId order by r.createdAt desc")
     List<Reservation> findByUserUserIdWithRoom(@Param("userId") Long userId);
+
+    @Query("""
+        select r
+        from Reservation r
+        join fetch r.user u
+        join fetch r.meetingRoom mr
+        where r.reservationId = :reservationId
+    """)
+    Optional<Reservation> findByIdWithUserAndMeetingRoom(@Param("reservationId") Long reservationId);
 }

@@ -24,6 +24,8 @@ import java.util.List;
 public class ReservationExpirationScheduler {
 
     private static final long PENDING_MINUTES = 10L;
+    private static final Long SYSTEM_USER_ID = 1L;
+    private static final String EXPIRE_REASON = "AUTO_EXPIRED";
 
     private final ReservationRepository reservationRepository;
     private final ReservationRoomRepository reservationRoomRepository;
@@ -31,13 +33,21 @@ public class ReservationExpirationScheduler {
     private final ApplicationEventPublisher eventPublisher;
     private final UserJpaRepository userRepository;
 
+    /**
+     * 일정 시간 이상 결제되지 않은 PENDING 예약 자동 만료 처리
+     */
     @Scheduled(fixedDelay = 60000)
     @Transactional
     public void expirePendingReservations() {
+
+        // 만료 기준 시간 계산 (현재 시간 - 정책 시간)
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(PENDING_MINUTES);
 
-        User admin = userRepository.findById(1L).get();
+        log.info("[ReservationExpire] PENDING 예약 만료 처리 시작 - threshold={}", threshold);
 
+        User admin = userRepository.findById(SYSTEM_USER_ID).get();
+
+        // Pending 대상 조회
         List<Reservation> expiredReservations =
                 reservationRepository.findExpiredPendingReservations(
                         ReservationStatus.PENDING,
@@ -45,20 +55,25 @@ public class ReservationExpirationScheduler {
                 );
 
         if (expiredReservations.isEmpty()) {
+            log.info("[ReservationExpire] PENDING 예약 만료 처리 완료 - 만료 대상 없음");
             return;
         }
 
+        log.info("[ReservationExpire] 만료 대상 예약 수 = {}", expiredReservations.size());
+
         for (Reservation reservation : expiredReservations) {
-            reservation.expire("Time Out");
+            reservation.expire(EXPIRE_REASON);
 
             List<ReservationRoom> reservationRooms = reservationRoomRepository
                     .findByReservation(reservation);
 
-            reservationRoomRepository.deleteAll(reservationRooms);
-
+            // 슬롯 복구
             for (ReservationRoom reservationRoom : reservationRooms) {
                 reservationRoom.getRoomSlot().updateActiveStatus(true);
             }
+
+            // 연결 엔티티 삭제
+            reservationRoomRepository.deleteAll(reservationRooms);
 
             eventPublisher.publishEvent(new ReservationStatusChangedEvent(
                     reservation,
@@ -69,7 +84,11 @@ public class ReservationExpirationScheduler {
                     admin,
                     reservation.getCancelReason()
             ));
+
+
         }
+
+        log.info("[ReservationExpire] PENDING 예약 만료 처리 완료 - totalExpired={}", expiredReservations.size());
     }
 
 
