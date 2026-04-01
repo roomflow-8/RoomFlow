@@ -32,7 +32,6 @@ public class ReservationController {
 	private final EquipmentService equipmentService;
 
 
-
   /**
      * 회의실 예약 생성 처리
      */
@@ -161,7 +160,6 @@ public class ReservationController {
 						"비품이 예약에 추가되었습니다."
 				);
 
-				//return "redirect:/mypage/reservations/" + reservationId;
 				return "redirect:/reservations/rooms/" + reservationId;
 
 			} else if (reservation.getStatus() == ReservationStatus.PENDING) {
@@ -260,11 +258,30 @@ public class ReservationController {
 			return "redirect:/reservations/" + reservationId + "/equipments";
 		}
 
-		log.info("backFromEquipment 호출");
+		log.debug("backFromEquipment 호출");
 		log.info("reservationId={}", reservationId);
 		log.info("reservationEquipmentIds={}", reservationEquipmentIds);
 
 		reservationService.expirePendingEquipments(reservationEquipmentIds,  loginUser.getUserId());
 		return "redirect:/reservations/" + reservationId + "/equipments";
+	}
+
+
+	/**
+	 * 회의실 기존 예약 건에 대한 비품 예약 취소
+	 */
+	@PostMapping("/{reservationId}/equipments/cancel")
+	public String cancelReservationEquipments(
+			@PathVariable Long reservationId,
+			@ModelAttribute CancelReservationEquipmentsReq request,
+			RedirectAttributes redirectAttributes
+	) {
+		log.info(" Request: {}", request);  // 어떤 필드가 실제로 바인딩됐는지 확인
+		log.info(" reservationEquipmentIds: {}", request.reservationEquipmentIds());
+
+		reservationService.cancelReservationEquipments(reservationId, request);
+		redirectAttributes.addFlashAttribute("message", "비품 예약이 취소되었습니다.");
+
+		return "redirect:/users/reservationlist";
 	}
 }
