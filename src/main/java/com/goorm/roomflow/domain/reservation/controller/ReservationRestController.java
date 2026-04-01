@@ -122,7 +122,9 @@ public class ReservationRestController {
 
     @Operation(summary = "회의실 기존 예약 건에 대한 비품 예약 취소")
     @PostMapping("/{reservationId}/equipments/cancel")
-    public ResponseEntity<ApiResponse<Void>> cancelReservationEquipments(@PathVariable Long reservationId, @RequestBody @Valid CancelReservationEquipmentsReq request) {
+    public ResponseEntity<ApiResponse<Void>> cancelReservationEquipments(
+            @PathVariable Long reservationId,
+            @RequestBody @Valid CancelReservationEquipmentsReq request) {
         log.info("비품 예약 취소 요청 - reservationId: {}, equipmentIds: {}",
                 reservationId, request.reservationEquipmentIds());
 
