@@ -25,4 +25,14 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     @Query("select r from Reservation r join fetch r.meetingRoom where r.user.userId = :userId order by r.createdAt desc")
     List<Reservation> findByUserUserIdWithRoom(@Param("userId") Long userId);
+
+    // reservation - meetingRoom - reservationRooms - roomSlot 한 번에 fetch join
+    @Query("""
+            select r from Reservation r
+                     join fetch r.meetingRoom mr
+                     left join fetch r.reservationRooms rr
+                     left join fetch rr.roomSlot
+                     where r.user.userId = :userId order by r.createdAt desc
+            """)
+    List<Reservation> findReservationByUserId(@Param("userId") Long userId);
 }

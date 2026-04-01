@@ -61,5 +61,13 @@ public interface ReservationEquipmentRepository extends JpaRepository<Reservatio
 	 */
 	List<ReservationEquipment> findByReservation_ReservationId(Long reservationId);
 
+	// 여러 reservationId를 IN 조건으로 한 번에 조회 + equipment fetch join
+	@Query("""
+		SELECT re
+		FROM ReservationEquipment re
+		JOIN FETCH re.equipment e
+		WHERE re.reservation.reservationId IN :reservationIds
+	""")
+	List<ReservationEquipment> findAllByReservationIdsWithEquipment(@Param("reservationIds") List<Long> reservationIds);
 
 }
