@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
             dateFormat: "Y-m-d",
             defaultDate: selectedDate,
             minDate: "today",
-            maxDate: new Date().fp_incr(31),
+            maxDate: getOneMonthLater(),
             monthSelectorType: "static",
             onChange: function (selectedDates, dateStr) {
                 hiddenInput.value = dateStr;
@@ -23,6 +23,20 @@ document.addEventListener("DOMContentLoaded", function () {
         picker.setDate(selectedDate, false);
     }
 });
+
+function getOneMonthLater(date = new Date()) {
+    const result = new Date(date);
+    const originalDate = result.getDate();
+
+    result.setMonth(result.getMonth() + 1);
+
+    // 말일 보정
+    if (result.getDate() !== originalDate) {
+        result.setDate(0);
+    }
+
+    return result;
+}
 
 function toggleRoom(button) {
     const card = button.closest(".room-card");

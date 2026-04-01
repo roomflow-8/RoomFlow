@@ -95,7 +95,7 @@ public class ReservationServiceImpl implements ReservationService {
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 2. 예약 조회
-		Reservation reservation = reservationRepository.findById(reservationId)
+		Reservation reservation = reservationRepository.findByIdWithUserAndMeetingRoom(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
 		// 3. 권한 검증
@@ -134,7 +134,6 @@ public class ReservationServiceImpl implements ReservationService {
 				.stream()
 				.map(EquipmentItem::from)
 				.toList();
-
 
 		// 금액 계산
 		BigDecimal roomAmount = calcTotalAmount(meetingRoom.getHourlyPrice(), roomSlots);
@@ -210,30 +209,18 @@ public class ReservationServiceImpl implements ReservationService {
 		}
 
 		// 3. 슬롯 조회
-		List<RoomSlot> roomSlots = roomSlotRepository.findByMeetingRoom_RoomIdAndRoomSlotIdIn(
+		List<RoomSlot> roomSlots = roomSlotRepository.findActiveSlotsByRoomIdAndRoomSlotIds(
 				request.roomId(), request.roomSlotIds());
 
 		// 3-1. 슬롯 예외 처리
 		if (roomSlots.size() != request.roomSlotIds().size()) {
-			log.warn("슬롯 조회 불일치 - roomId={}, requestedSlotIds={}, foundSlotCount={}",
+			log.warn("존재하지 않거나 이미 비활성화된 슬롯 포함 - roomId={}, requestedSlotIds={}, foundSlotCount={}",
 					request.roomId(), request.roomSlotIds(), roomSlots.size());
 
-			throw new BusinessException(ErrorCode.ROOM_SLOT_NOT_FOUND);
-		}
-
-		List<RoomSlot> sortedSlots = roomSlots.stream()
-				.sorted(Comparator.comparing(RoomSlot::getRoomSlotId))
-				.toList();
-
-		LocalDate reservationDate = roomSlots.getFirst().getSlotStartAt().toLocalDate();
-
-		boolean hasUnavailableSlot = sortedSlots.stream()
-				.anyMatch(slot -> !slot.isActive());
-
-		if (hasUnavailableSlot) {
-			log.warn("이미 예약된 슬롯 포함 - roomId={}, slotIds={}", request.roomId(), request.roomSlotIds());
 			throw new BusinessException(ErrorCode.RESERVATION_ALREADY_EXISTS);
 		}
+
+		LocalDate reservationDate = roomSlots.getFirst().getSlotStartAt().toLocalDate();
 
 		// 4. 금액 계산
 		BigDecimal totalAmount = calcTotalAmount(meetingRoom.getHourlyPrice(), roomSlots);
@@ -273,16 +260,18 @@ public class ReservationServiceImpl implements ReservationService {
 		log.info("회의실 예약 엔티티 저장 완료 - reservationId={}, reservationRoomCount={}",
 				reservation.getReservationId(), reservationRooms.size());
 
-		int totalHours = sortedSlots.size();
+		int totalHours = roomSlots.size();
 
 		// 7. 슬롯 상태 변경
-		sortedSlots.forEach(roomSlot -> roomSlot.updateActiveStatus(false));
+		for (RoomSlot roomSlot : roomSlots) {
+			roomSlot.updateActiveStatus(false);
+		}
 
-		log.info("슬롯 비활성화 완료 - reservationId={}, slotIds={}",
-				reservation.getReservationId(), request.roomSlotIds());
+		log.info("슬롯 비활성화 완료 - reservationId={}, slotIds={}, count={}",
+				reservation.getReservationId(), request.roomSlotIds(), roomSlots.size());
 
 		// 8. 슬롯 정리
-		List<ReservationTimeSlot> reservationTimeSlots = makeReservationTimeSlot(sortedSlots);
+		List<ReservationTimeSlot> reservationTimeSlots = makeReservationTimeSlot(roomSlots);
 
 		long elapsed = System.currentTimeMillis() - start;
 		log.info("회의실 예약 생성 완료 - reservationId={}, userId={}, elapsedMs={}",
@@ -531,6 +520,9 @@ public class ReservationServiceImpl implements ReservationService {
 	@Transactional
 	public void confirmReservation(Long userId, Long reservationId, ConfirmReservationReq request) {
 
+		long startTime = System.currentTimeMillis();
+		log.info("예약 확정 요청 - reservationId={}, userId={}", reservationId, userId);
+
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -542,6 +534,12 @@ public class ReservationServiceImpl implements ReservationService {
 
 		if (user.getRole().equals(UserRole.USER)
 				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+
+			log.warn("예약 확정 권한 없음 - reservationId={}, requestUserId={}, ownerUserId={}",
+					reservationId,
+					userId,
+					reservation.getUser().getUserId());
+
 			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
 		}
 
@@ -560,12 +558,17 @@ public class ReservationServiceImpl implements ReservationService {
 					user,
 					request.memo()
 			);
+
+			log.info("예약 확정 완료 - reservationId={}, userId={}", reservationId, userId);
+		} else {
+			log.warn("이미 처리된 예약 확정 요청 - reservationId={}, currentStatus={}", reservationId, reservation.getStatus());
 		}
 
 		// 비품 예약이 있으면 함께 확정
 		if (request.reservationEquipmentIds() != null && !request.reservationEquipmentIds().isEmpty()) {
 			confirmEquipment(reservationId, request.reservationEquipmentIds());
 		}
+		log.info("예약 확정 처리 완료 - reservationId={}, duration={}ms", reservationId,	System.currentTimeMillis() - startTime);
 	}
 
 	/**
@@ -730,7 +733,7 @@ public class ReservationServiceImpl implements ReservationService {
 		});
 
 		// 회의실 예약 슬롯 삭제
-		reservationRoomRepository.deleteAll(reservationRooms);
+//		reservationRoomRepository.deleteAll(reservationRooms);
 
 		// 비품이 있는경우 함께 삭제
 		List<ReservationEquipment> reservationEquipments =
@@ -745,6 +748,8 @@ public class ReservationServiceImpl implements ReservationService {
 					.toList();
 
 			cancelEquipments(reservation, equipmentIds, reason);
+		} else {
+			reservation.updateTotalAmount(BigDecimal.ZERO);
 		}
 
 		// 상태 이벤트 발행
