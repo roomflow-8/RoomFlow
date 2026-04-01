@@ -527,7 +527,7 @@ public class ReservationServiceImpl implements ReservationService {
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 회의실 예약 조회
-		Reservation reservation = reservationRepository.findById(reservationId)
+		Reservation reservation = reservationRepository.findByReservationId(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
 		ReservationStatus fromStatus = reservation.getStatus();
@@ -697,20 +697,27 @@ public class ReservationServiceImpl implements ReservationService {
 	@Override
 	@Transactional
 	public void cancelReservation(Long userId, Long reservationId, CancelReservationReq request) {
+		long start = System.currentTimeMillis();
+		log.info("예약 취소 시작 - userId={}, reservationId={}", userId, reservationId);
 
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 예약 조회
-		Reservation reservation = reservationRepository.findById(reservationId)
+		Reservation reservation = reservationRepository.findByIdWithUserAndMeetingRoom(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
 		if (user.getRole().equals(UserRole.USER)
 				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+			log.warn("예약 취소 권한 없음 - userId={}, reservationId={}, reservationUserId={}",
+					userId, reservationId, reservation.getUser().getUserId());
+
 			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
 		}
 
 		ReservationStatus fromStatus = reservation.getStatus();
+
+		log.info("예약 취소 대상 조회 완료 - reservationId={}", reservationId);
 
 		String reason = request.reason();
 
@@ -732,25 +739,16 @@ public class ReservationServiceImpl implements ReservationService {
 			roomSlot.updateActiveStatus(true);
 		});
 
-		// 회의실 예약 슬롯 삭제
-//		reservationRoomRepository.deleteAll(reservationRooms);
+		log.info("예약 상태 변경 완료 - reservationId={}, reason={}, reservationRoomCount={}",
+				reservationId, reason, reservationRooms.size());
 
 		// 비품이 있는경우 함께 삭제
-		List<ReservationEquipment> reservationEquipments =
-				reservationEquipmentRepository.findByReservation_ReservationIdAndStatusNot(
-						reservationId,
-						ReservationStatus.CANCELLED
-				);
-
-		if (!reservationEquipments.isEmpty()) {
-			List<Long> equipmentIds = reservationEquipments.stream()
-					.map(ReservationEquipment::getReservationEquipmentId)
-					.toList();
-
-			cancelEquipments(reservation, equipmentIds, reason);
-		} else {
-			reservation.updateTotalAmount(BigDecimal.ZERO);
+		if (request.reservationEquipmentIds() != null && !request.reservationEquipmentIds().isEmpty()) {
+			cancelEquipments(reservation, request.reservationEquipmentIds(), reason);
 		}
+
+		// 예약 금액 - 0원 변환
+		reservation.updateTotalAmount(BigDecimal.ZERO);
 
 		// 상태 이벤트 발행
 		publishReservationStatusChangedEvent(
@@ -760,6 +758,9 @@ public class ReservationServiceImpl implements ReservationService {
 				user, //User
 				reason //"cancel"
 		);
+
+		log.info("예약 취소 완료 - reservationId={}, userId={}, elapsed={}ms",
+				reservationId, userId, System.currentTimeMillis() - start);
 	}
 
 	@Override
@@ -795,16 +796,21 @@ public class ReservationServiceImpl implements ReservationService {
 	@Override
 	@Transactional
 	public void expireReservation(Long userId, Long reservationId) {
+		long start = System.currentTimeMillis();
+		log.info("[이전 단계] 예약 만료 시작 - userId={}, reservationId={}", userId, reservationId);
 
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 예약 조회
-		Reservation reservation = reservationRepository.findById(reservationId)
+		Reservation reservation = reservationRepository.findByReservationId(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
 		if (user.getRole().equals(UserRole.USER)
 				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
+			log.warn("[이전 단계] 예약 만료 권한 없음 - userId={}, reservationId={}, reservationUserId={}",
+					userId, reservationId, reservation.getUser().getUserId());
+
 			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
 		}
 		ReservationStatus fromStatus = reservation.getStatus();
@@ -815,6 +821,8 @@ public class ReservationServiceImpl implements ReservationService {
 			// 회의실 취소 상태 검증 및 변경
 			reservation.expire(reason);
 
+			log.info("[이전 단계] 예약 상태 변경 완료 - reservationId={}, {} -> {}", reservationId, fromStatus, reservation.getStatus());
+
 			// 회의실 목록 조회
 			List<ReservationRoom> reservationRooms = reservationRoomRepository.findByReservation(reservation);
 
@@ -824,8 +832,14 @@ public class ReservationServiceImpl implements ReservationService {
 				roomSlot.updateActiveStatus(true);
 			});
 
+			log.info("[이전 단계] 예약 슬롯 복구 완료 - reservationId={}, slotCount={}",
+					reservationId, reservationRooms.size());
+
 			// 회의실 예약 슬롯 삭제
 			reservationRoomRepository.deleteAll(reservationRooms);
+
+			log.info("[이전 단계] 예약 슬롯 삭제 완료 - reservationId={}, deletedCount={}",
+					reservationId, reservationRooms.size());
 
 			// 상태 이벤트 발행
 			publishReservationStatusChangedEvent(
@@ -835,6 +849,8 @@ public class ReservationServiceImpl implements ReservationService {
 					user,
 					reason
 			);
+
+			log.info("예약 만료 완료 - reservationId={}, userId={}, elapsed={}ms", reservationId, userId, System.currentTimeMillis() - start);
 		}
 
 	}
@@ -970,6 +986,8 @@ public class ReservationServiceImpl implements ReservationService {
 				changedBy,
 				reason
 		));
+
+		log.info("회의실 예약 상태 변경 이벤트 발행 - reservationId={}, {} -> {}", reservation.getReservationId(), fromStatus, toStatus);
 	}
 
 

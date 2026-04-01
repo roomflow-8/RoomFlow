@@ -3,6 +3,7 @@ package com.goorm.roomflow.domain.reservation.repository;
 import com.goorm.roomflow.domain.reservation.entity.Reservation;
 import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
 import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -44,4 +45,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                      where r.user.userId = :userId order by r.createdAt desc
             """)
     List<Reservation> findReservationByUserId(@Param("userId") Long userId);
+
+    @EntityGraph(attributePaths = {"user"})
+    Optional<Reservation> findByReservationId(Long reservationId);
 }
