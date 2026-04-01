@@ -85,6 +85,8 @@ public class ReservationExpirationScheduler {
                     reservation.getCancelReason()
             ));
 
+            log.info("회의실 예약 상태 변경 이벤트 발행 - reservationId={}, {} -> {}", reservation.getReservationId(), ReservationStatus.PENDING, reservation.getStatus());
+
 
         }
 
