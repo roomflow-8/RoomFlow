@@ -11,8 +11,6 @@ import com.goorm.roomflow.domain.reservation.entity.QReservationRoom;
 import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
 import com.goorm.roomflow.domain.room.entity.QMeetingRoom;
 import com.goorm.roomflow.domain.room.entity.QRoomSlot;
-import com.goorm.roomflow.global.code.ErrorCode;
-import com.goorm.roomflow.global.exception.BusinessException;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
@@ -54,7 +52,7 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 				.join(reservationRoom.roomSlot, roomSlot)
 				.where(
 						reservation.reservationId.eq(reservationId),
-						reservation.status.in(ReservationStatus.PENDING, ReservationStatus.CONFIRMED)
+						reservation.status.eq(ReservationStatus.PENDING)
 				)
 				.groupBy(reservation.reservationId,
 						meetingRoom.roomId,
@@ -62,7 +60,7 @@ public class CustomEquipmentRepositoryImpl implements CustomEquipmentRepository 
 				.fetchOne();
 
 		if (reservationInfo == null) {
-			throw new BusinessException(ErrorCode.RESERVATION_NOT_FOUND);
+			throw new IllegalArgumentException("Invalid reservation or not in PENDING status");
 		}
 
 		return reservationInfo;
