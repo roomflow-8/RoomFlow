@@ -2,6 +2,8 @@ package com.goorm.roomflow.domain.equipment.service;
 
 import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
 import com.goorm.roomflow.domain.equipment.repository.EquipmentRepository;
+import com.goorm.roomflow.global.code.ErrorCode;
+import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,8 +34,7 @@ public class EquipmentService {
 
 			return availableEquipments;
 		} catch (Exception e) {
-			log.error("==============", e);
-			throw e;
+			throw new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND);
 		}
 	}
 }

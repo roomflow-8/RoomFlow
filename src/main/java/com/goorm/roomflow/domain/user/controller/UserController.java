@@ -1,18 +1,23 @@
 package com.goorm.roomflow.domain.user.controller;
 
 import com.goorm.roomflow.domain.user.dto.SignupRequestDTO;
+import com.goorm.roomflow.domain.user.dto.UserDto;
 import com.goorm.roomflow.domain.user.dto.UserTO;
+import com.goorm.roomflow.domain.user.service.CustomUser;
 import com.goorm.roomflow.domain.user.service.EmailService;
 import com.goorm.roomflow.domain.user.service.UserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+@Slf4j
 @Tag(name = "UserController", description = "유저 페이지 뷰 컨트롤러")
 @Controller
 @RequestMapping("/users")
@@ -43,11 +48,11 @@ public class UserController {
                                   @RequestParam(required = false) String startDate,
                                   @RequestParam(required = false) String endDate,
                                   Model model) {
-        UserTO loginUser = (UserTO) session.getAttribute("loginUser");
+        UserDto loginUser = (UserDto) session.getAttribute("loginUser");
         if (loginUser == null) {
             return "redirect:/users/login";
         }
-        model.addAttribute("reservations", userService.getReservationsByUserId(loginUser.getUserId(), tab, startDate, endDate));
+        model.addAttribute("reservations", userService.getReservationsByUserId(loginUser.userId(), tab, startDate, endDate));
         model.addAttribute("activeTab", tab);
         model.addAttribute("startDate", startDate);
         model.addAttribute("endDate", endDate);
@@ -65,28 +70,27 @@ public class UserController {
 
     // 마이페이지 렌더링
     @GetMapping("/mypage")
-    public String myPage(HttpSession session, Model model) {
-        UserTO loginUser = (UserTO) session.getAttribute("loginUser");
-        if (loginUser == null) {
+    public String myPage(@AuthenticationPrincipal CustomUser currentUser,
+                         Model model) {
+        if (currentUser == null) {
             return "redirect:/users/login";
         }
-        model.addAttribute("loginUser", loginUser);
+        model.addAttribute("loginUser", UserDto.from(currentUser));
         return "user/mypage";
     }
 
     // 이름 변경
     @PostMapping("/mypage/name")
     public String updateName(@RequestParam String name,
-                             HttpSession session,
+                             @AuthenticationPrincipal CustomUser currentUser,
                              RedirectAttributes redirectAttributes) {
-        UserTO loginUser = (UserTO) session.getAttribute("loginUser");
-        if (loginUser == null) {
+
+        if (currentUser == null) {
             return "redirect:/users/login";
         }
         try {
-            userService.updateName(loginUser.getEmail(), name);
-            loginUser.setName(name);
-            session.setAttribute("loginUser", loginUser);
+            userService.updateName(currentUser.getEmail(), name);
+
             redirectAttributes.addFlashAttribute("successMsg", "이름이 변경되었습니다.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
@@ -101,7 +105,7 @@ public class UserController {
                                  @RequestParam String newPasswordConfirm,
                                  HttpSession session,
                                  RedirectAttributes redirectAttributes) {
-        UserTO loginUser = (UserTO) session.getAttribute("loginUser");
+        UserDto loginUser = (UserDto) session.getAttribute("loginUser");
         if (loginUser == null) {
             return "redirect:/users/login";
         }
@@ -110,7 +114,7 @@ public class UserController {
             return "redirect:/users/mypage";
         }
         try {
-            userService.changePassword(loginUser.getEmail(), currentPassword, newPassword);
+            userService.changePassword(loginUser.email(), currentPassword, newPassword);
             redirectAttributes.addFlashAttribute("passwordSuccess", "비밀번호가 변경되었습니다.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("passwordError", e.getMessage());
@@ -122,12 +126,12 @@ public class UserController {
     @PostMapping("/mypage/delete")
     public String deleteAccount(HttpSession session,
                                 RedirectAttributes redirectAttributes) {
-        UserTO loginUser = (UserTO) session.getAttribute("loginUser");
+        UserDto loginUser = (UserDto) session.getAttribute("loginUser");
         if (loginUser == null) {
             return "redirect:/users/login";
         }
         try {
-            userService.deleteAccount(loginUser.getEmail());
+            userService.deleteAccount(loginUser.email());
             session.invalidate();
             redirectAttributes.addFlashAttribute("successMsg", "회원탈퇴가 완료되었습니다.");
             return "redirect:/users/login";
