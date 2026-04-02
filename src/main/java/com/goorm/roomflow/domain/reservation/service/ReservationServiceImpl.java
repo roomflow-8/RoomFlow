@@ -67,11 +67,20 @@ public class ReservationServiceImpl implements ReservationService {
 	private final TransactionTemplate transactionTemplate;
 
 	@Override
-	public Reservation getReservation(Long reservationId) {
+	public Reservation getReservation(Long userId, Long reservationId) {
 		log.debug("예약 조회 - reservationId: {}", reservationId);
 
-		return reservationRepository.findById(reservationId)
+
+		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+
+
+		// ✅ 권한 체크
+		if (!reservation.getUser().getUserId().equals(userId)) {
+			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
+		}
+
+		return reservation;
 	}
 
 	/**
@@ -299,6 +308,7 @@ public class ReservationServiceImpl implements ReservationService {
 	@Override
 	@Transactional
 	public EquipmentReservationRes addEquipmentsToReservation(
+			Long userId,
 			Long reservationId,
 			AddEquipmentsReq request) {
 
@@ -494,7 +504,7 @@ public class ReservationServiceImpl implements ReservationService {
 		if (request.reservationEquipmentIds() != null && !request.reservationEquipmentIds().isEmpty()) {
 			confirmEquipment(reservationId, request.reservationEquipmentIds());
 		}
-		log.info("예약 확정 처리 완료 - reservationId={}, duration={}ms", reservationId,	System.currentTimeMillis() - startTime);
+		log.info("예약 확정 처리 완료 - reservationId={}, duration={}ms", reservationId, System.currentTimeMillis() - startTime);
 	}
 
 	/**
@@ -503,10 +513,17 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Override
 	@Transactional
-	public void confirmEquipmentsService(Long reservationId, List<Long> reservationEquipmentIds) {
+	public void confirmEquipmentsService(Long userId, Long reservationId, List<Long> reservationEquipmentIds) {
 		// 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+
+
+		// 권한 체크
+		if (!reservation.getUser().getUserId().equals(userId)) {
+			log.debug("confirmEquipmentsService - reservationUserId()={}, userId={}", reservation.getUser().getUserId(), userId);
+			throw new BusinessException(ErrorCode.FORBIDDEN);
+		}
 
 		// 회의실 예약이 확정 상태인지 확인
 		if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
@@ -603,7 +620,6 @@ public class ReservationServiceImpl implements ReservationService {
 			));
 
 
-
 			log.info("비품 예약 확정 완료 - equipmentId: {}, quantity: {}",
 					reservationEquipment.getEquipment().getEquipmentId(),
 					reservationEquipment.getQuantity());
@@ -697,11 +713,21 @@ public class ReservationServiceImpl implements ReservationService {
 
 	@Override
 	@Transactional
-	public void cancelReservationEquipments(Long reservationId, CancelReservationEquipmentsReq request) {
+	public void cancelReservationEquipments(Long userId, Long reservationId, CancelReservationEquipmentsReq request) {
 		try {
-			//예약 조회
+			/*//예약 조회
 			Reservation reservation = getReservation(reservationId);
 			log.debug("reservationServiceImpl - 예약 조회 완료 - status: {}", reservation.getStatus());
+*/
+
+			// 1. 예약 조회
+			Reservation reservation = reservationRepository.findById(reservationId)
+					.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+
+			// 2. 권한 체크
+			if (!reservation.getUser().getUserId().equals(userId)) {
+				throw new BusinessException(ErrorCode.FORBIDDEN);
+			}
 
 			// 취소/만료된 예약은 비품 취소 불가
 			if (reservation.getStatus() == ReservationStatus.CANCELLED || reservation.getStatus() == ReservationStatus.EXPIRED) {
@@ -819,12 +845,25 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Override
 	@Transactional(readOnly = true)
-	public List<EquipmentAvailabilityDto> getAvailableEquipments(Long reservationId) {
+	public List<EquipmentAvailabilityDto> getAvailableEquipments(Long userId, Long reservationId) {
 		log.debug("사용 가능한 재고 조회 - reservationId: {}", reservationId);
+
+/*
 
 		// 예약 존재 여부 확인
 		if (!reservationRepository.existsById(reservationId)) {
 			throw new BusinessException(ErrorCode.RESERVATION_NOT_FOUND);
+		}
+*/
+
+		// 1. 예약 조회
+		Reservation reservation = reservationRepository.findById(reservationId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+
+
+		// 권한 체크
+		if (!reservation.getUser().getUserId().equals(userId)) {
+			throw new BusinessException(ErrorCode.FORBIDDEN);
 		}
 
 		return equipmentRepository.findAvailableEquipmentsByReservation(reservationId);
@@ -923,16 +962,15 @@ public class ReservationServiceImpl implements ReservationService {
 	}
 
 
-
 	/**
 	 * 비품 예약 상태 변경 이벤트 발행
 	 *
-	 * @param reservation 예약
+	 * @param reservation            예약
 	 * @param equipmentReservationId 비품 예약 ID
-	 * @param fromStatus 이전 상태
-	 * @param toStatus 변경된 상태
-	 * @param changedBy 변경자
-	 * @param reason 변경 사유
+	 * @param fromStatus             이전 상태
+	 * @param toStatus               변경된 상태
+	 * @param changedBy              변경자
+	 * @param reason                 변경 사유
 	 */
 	private void publishEquipmentsReservationStatusChangedEvent(
 			Reservation reservation,
@@ -1043,7 +1081,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 	@Override
 	@Transactional
-	public void expirePendingEquipments(List<Long> reservationEquipmentIds, Long changedByUserId) {
+	public void expirePendingEquipments(Long changedByUserId, List<Long> reservationEquipmentIds) {
 
 		if (reservationEquipmentIds == null || reservationEquipmentIds.isEmpty()) {
 			log.info("expire 대상 없음");

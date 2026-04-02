@@ -35,7 +35,7 @@ public class LoggingInterceptor implements HandlerInterceptor {
                 handlerName,
                 request.getMethod(),
                 request.getRequestURI(),
-                userId);
+                userId); //TODO: null값 확인
 
         return true;
     }

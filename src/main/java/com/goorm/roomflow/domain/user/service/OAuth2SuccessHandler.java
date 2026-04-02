@@ -1,7 +1,6 @@
 package com.goorm.roomflow.domain.user.service;
 
-import com.goorm.roomflow.domain.user.dto.UserTO;
-import com.goorm.roomflow.domain.user.entity.User;
+import com.goorm.roomflow.domain.user.dto.UserDto;
 import com.goorm.roomflow.domain.user.repository.UserJpaRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,7 +8,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +19,7 @@ import java.io.IOException;
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
 	private final UserJpaRepository userJpaRepository;
-
+/* 원본
 	@Override
 	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
 										Authentication authentication) throws IOException, ServletException {
@@ -61,6 +59,28 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 					log.info("소셜 로그인 - 세션 저장: {}", email);
 				}
 			}
+		}
+
+		setDefaultTargetUrl("/rooms");
+		super.onAuthenticationSuccess(request, response, authentication);
+	}
+	*/
+
+	//CustomUser 반영본
+	@Override
+	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+										Authentication authentication) throws IOException, ServletException {
+
+		if (authentication.getPrincipal() instanceof CustomUser customUser) {
+			log.info("소셜 로그인 성공: userId={}", customUser.getUserId());
+
+			// UserDTO 생성 (CustomUser에서 바로 추출)
+			UserDto loginUser = UserDto.from(customUser);
+
+			request.getSession().setAttribute("loginUser", loginUser);
+			log.info("소셜 로그인 - 세션 저장 완료: userId={}", customUser.getUserId());
+		} else {
+			log.warn("예상치 못한 Principal 타입: {}", authentication.getPrincipal().getClass());
 		}
 
 		setDefaultTargetUrl("/rooms");

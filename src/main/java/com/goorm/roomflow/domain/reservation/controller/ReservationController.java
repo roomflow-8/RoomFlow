@@ -9,7 +9,7 @@ import com.goorm.roomflow.domain.reservation.entity.Reservation;
 import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
 import com.goorm.roomflow.domain.reservation.service.ReservationLockFacade;
 import com.goorm.roomflow.domain.reservation.service.ReservationService;
-import com.goorm.roomflow.domain.user.dto.UserTO;
+import com.goorm.roomflow.domain.user.service.CustomUser;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,40 +32,40 @@ public class ReservationController {
 	private final EquipmentService equipmentService;
 
 
-  /**
-     * 회의실 예약 생성 처리
-     */
-    @PostMapping
-    public String createRoomReservation(
-            @SessionAttribute(name="loginUser", required=false) UserTO loginUser,
-            @ModelAttribute CreateReservationRoomReq request,
-            RedirectAttributes redirectAttributes) {
+	/**
+	 * 회의실 예약 생성 처리
+	 */
+	@PostMapping
+	public String createRoomReservation(
+			@AuthenticationPrincipal CustomUser currentUser,
+			@ModelAttribute CreateReservationRoomReq request,
+			RedirectAttributes redirectAttributes) {
 
-        try {
-            Long reservationId = reservationLockFacade.createReservationRoom(loginUser.getUserId(), request).reservationId();
+		try {
+			Long reservationId = reservationLockFacade.createReservationRoom(currentUser.getUserId(), request).reservationId();
 
-            return "redirect:/reservations/rooms/" + reservationId;
-        } catch (BusinessException e) {
-            redirectAttributes.addFlashAttribute("alertType", "error");
-            redirectAttributes.addFlashAttribute("message", e.
-                    getMessage());
+			return "redirect:/reservations/rooms/" + reservationId;
+		} catch (BusinessException e) {
+			redirectAttributes.addFlashAttribute("alertType", "error");
+			redirectAttributes.addFlashAttribute("message", e.
+					getMessage());
 
-            return "redirect:/rooms";
-        }
+			return "redirect:/rooms";
+		}
 
-    }
-  
-  
+	}
+
+
 	/**
 	 * 회의실 예약 확인 페이지 조회
 	 */
 	@GetMapping("/rooms/{reservationId}")
 	public String reservationPage(
-			@SessionAttribute(name = "loginUser", required = false) UserTO loginUser,
+			@AuthenticationPrincipal CustomUser currentUser,
 			@PathVariable("reservationId") Long reservationId,
 			Model model) {
 
-		ReservationRoomRes reservationRoomRes = reservationService.readReservationRoom(loginUser.getUserId(), reservationId);
+		ReservationRoomRes reservationRoomRes = reservationService.readReservationRoom(currentUser.getUserId(), reservationId);
 
 		model.addAttribute("reservationRoom", reservationRoomRes);
 		model.addAttribute("hasEquipments", reservationRoomRes.equipments() != null && !reservationRoomRes.equipments().isEmpty());
@@ -80,18 +80,21 @@ public class ReservationController {
 	 * @return 비품 선택 페이지
 	 */
 	@GetMapping("/{reservationId}/equipments")
-	public String readAvailableEquipments(@PathVariable Long reservationId, Model model) {
+	public String readAvailableEquipments(
+			@AuthenticationPrincipal CustomUser currentUser,
+			@PathVariable Long reservationId,
+			Model model) {
 
 		try {
 
 			// 1. 예약 정보 조회
-			Reservation reservation = reservationService.getReservation(reservationId);
+			Reservation reservation = reservationService.getReservation(currentUser.getUserId(), reservationId);
 
 			// 2. 사용 가능한 비품 목록 조회
 			List<EquipmentAvailabilityDto> equipments =
-					reservationService.getAvailableEquipments(reservationId);
+					reservationService.getAvailableEquipments(currentUser.getUserId(), reservationId);
 
-			log.info("비품 선택 페이지 요청 - reservationId: {}", reservationId);
+			log.info("비품 선택 페이지 요청 - reservationId: {}, userId: {}", reservationId, currentUser.getUserId());
 			log.info("비품 목록 조회 완료 - {} 개", equipments.size());
 
 			model.addAttribute("reservation", reservation);
@@ -99,10 +102,12 @@ public class ReservationController {
 			model.addAttribute("reservationStatus", reservation.getStatus());
 			model.addAttribute("equipments", equipments);
 			return "equipment/list";
-		} catch (Exception e) {
+
+		}  catch (Exception e) {
 			log.error("비품 목록 조회 실패: {}", e.getMessage(), e);
 			model.addAttribute("errorMessage", e.getMessage());
 			return "5xx";
+			//	throw new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND);
 		}
 	}
 
@@ -114,36 +119,28 @@ public class ReservationController {
 	 - Pending일 때 예약확인 페이지(/reservations/rooms/{reservationId})로 이동
 	 */
 	@PostMapping("/{reservationId}/equipments")
-	public String createEquipmentReservation(@PathVariable("reservationId") Long reservationId,
-											 @ModelAttribute EquipmentFormReq formReq,
-											 RedirectAttributes redirectAttributes) {
+	public String createEquipmentReservation(
+			@AuthenticationPrincipal CustomUser currentUser,
+			@PathVariable("reservationId") Long reservationId,
+			@ModelAttribute EquipmentFormReq formReq,
+			RedirectAttributes redirectAttributes) {
 
 		try {
-			log.info("비품 예약 요청 - reservationId: {}", reservationId);
-			log.debug("받은 Form 데이터: {}", formReq);
-			log.debug("equipments Map: {}", formReq.getEquipments());
+			log.info("비품 예약 요청 - userId: {}, reservationId: {}", currentUser.getUserId(), reservationId);
 
-			// 1. 예약 정보 조회
-			Reservation reservation = reservationService.getReservation(reservationId);
-
-			//예약 상태 확인
-			ReservationStatus currentStatus = reservation.getStatus();
-
-			log.info("*********현재 예약 상태: {}", currentStatus);
-
-
-			// 2. 비품 선택 여부 확인
+			// 비품 선택 여부 확인
 			if (!formReq.hasEquipments()) {
+				redirectAttributes.addFlashAttribute("message", "비품을 선택해주세요.");
 				return "redirect:/reservations/" + reservationId + "/equipments";
 			}
 
-			// 3. Form DTO → Service DTO 변환
+			// Form DTO → Service DTO 변환
 			AddEquipmentsReq request = formReq.toAddEquipmentsReq();
 			log.info("변환된 비품 목록: {} 개", request.equipments().size());
 
-			// 4. Service 호출 - 비품 추가 pending상태로 예약
+			// Service 호출 - 비품 추가 pending상태로 예약
 			EquipmentReservationRes response =
-					reservationService.addEquipmentsToReservation(reservationId, request);
+					reservationService.addEquipmentsToReservation(currentUser.getUserId(), reservationId, request);
 
 			log.info("비품 추가 완료 - {} 종류", response.equipments().size());
 
@@ -165,13 +162,13 @@ public class ReservationController {
 	 */
 	@PostMapping("/{reservationId}/confirm")
 	public String confirmReservation(
-			@SessionAttribute(name = "loginUser", required = false) UserTO loginUser,
+			@AuthenticationPrincipal CustomUser currentUser,
 			@PathVariable Long reservationId,
 			@ModelAttribute ConfirmReservationReq request,
 			RedirectAttributes redirectAttributes
 	) {
 		try {
-			reservationService.confirmReservation(loginUser.getUserId(), reservationId, request);
+			reservationService.confirmReservation(currentUser.getUserId(), reservationId, request);
 			redirectAttributes.addFlashAttribute("alertType", "success");
 			redirectAttributes.addFlashAttribute("message", "예약이 확정되었습니다.");
 
@@ -189,9 +186,9 @@ public class ReservationController {
 	 */
 	@PostMapping("/{reservationId}/back/room")
 	public String backFromRoom(
-			@SessionAttribute(name = "loginUser", required = false) UserTO loginUser,
+			@AuthenticationPrincipal CustomUser currentUser,
 			@PathVariable Long reservationId) {
-		reservationService.expireReservation(loginUser.getUserId(), reservationId);
+		reservationService.expireReservation(currentUser.getUserId(), reservationId);
 		return "redirect:/rooms";
 	}
 
@@ -200,13 +197,13 @@ public class ReservationController {
 	 */
 	@PostMapping("/{reservationId}/cancel")
 	public String cancelReservation(
-			@SessionAttribute(name = "loginUser", required = false) UserTO loginUser,
+			@AuthenticationPrincipal CustomUser currentUser,
 			@PathVariable Long reservationId,
 			@ModelAttribute CancelReservationReq request,
 			RedirectAttributes redirectAttributes
 	) {
 
-		reservationService.cancelReservation(loginUser.getUserId(), reservationId, request);
+		reservationService.cancelReservation(currentUser.getUserId(), reservationId, request);
 
 		redirectAttributes.addFlashAttribute("alertType", "success");
 		redirectAttributes.addFlashAttribute("message", "예약이 취소되었습니다.");
@@ -220,19 +217,15 @@ public class ReservationController {
 
 	@PostMapping("/{reservationId}/back/equipment")
 	public String backFromEquipment(
+			@AuthenticationPrincipal CustomUser currentUser,
 			@PathVariable Long reservationId,
-			@RequestParam(required = false) List<Long> reservationEquipmentIds,
-			@SessionAttribute(name = "loginUser", required = false) UserTO loginUser
-	) {
+			@RequestParam(required = false) List<Long> reservationEquipmentIds
 
-		// 로그인 체크
-		if (loginUser == null) {
-			return "redirect:/users/login";
-		}
+	) {
 
 		// 비품 ID 체크
 		if (reservationEquipmentIds == null || reservationEquipmentIds.isEmpty()) {
-			log.info("비품 추가 페이지로 이동시 expire 대상 없음");
+			log.debug("비품 추가 페이지로 이동시 expire 대상 없음");
 			return "redirect:/reservations/" + reservationId + "/equipments";
 		}
 
@@ -240,7 +233,7 @@ public class ReservationController {
 		log.info("reservationId={}", reservationId);
 		log.info("reservationEquipmentIds={}", reservationEquipmentIds);
 
-		reservationService.expirePendingEquipments(reservationEquipmentIds,  loginUser.getUserId());
+		reservationService.expirePendingEquipments(currentUser.getUserId(), reservationEquipmentIds);
 		return "redirect:/reservations/" + reservationId + "/equipments";
 	}
 
@@ -250,14 +243,19 @@ public class ReservationController {
 	 */
 	@PostMapping("/{reservationId}/equipments/cancel")
 	public String cancelReservationEquipments(
+			@AuthenticationPrincipal CustomUser currentUser,
 			@PathVariable Long reservationId,
 			@ModelAttribute CancelReservationEquipmentsReq request,
 			RedirectAttributes redirectAttributes
 	) {
-		log.info(" Request: {}", request);  // 어떤 필드가 실제로 바인딩됐는지 확인
-		log.info(" reservationEquipmentIds: {}", request.reservationEquipmentIds());
+		log.info("비품 예약 취소 요청 - reservationId: {}, userId: {}",
+				reservationId, currentUser.getUserId());
+		log.debug(" Request: {}", request);  // 어떤 필드가 실제로 바인딩됐는지 확인
+		log.debug(" reservationEquipmentIds: {}", request.reservationEquipmentIds());
 
-		reservationService.cancelReservationEquipments(reservationId, request);
+		reservationService.cancelReservationEquipments(currentUser.getUserId(), reservationId, request);
+		log.info("비품 예약 취소 완료 - reservationId: {}, userId: {}",
+				reservationId, currentUser.getUserId());
 		redirectAttributes.addFlashAttribute("message", "비품 예약이 취소되었습니다.");
 
 		return "redirect:/users/reservationlist";
