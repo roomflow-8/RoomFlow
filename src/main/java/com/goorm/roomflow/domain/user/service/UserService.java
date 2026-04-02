@@ -6,10 +6,7 @@ import com.goorm.roomflow.domain.reservation.entity.ReservationRoom;
 import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
 import com.goorm.roomflow.domain.reservation.repository.ReservationEquipmentRepository;
 import com.goorm.roomflow.domain.reservation.repository.ReservationRepository;
-import com.goorm.roomflow.domain.user.dto.SignupRequestDTO;
-import com.goorm.roomflow.domain.user.dto.UserEquipmentItem;
-import com.goorm.roomflow.domain.user.dto.UserReservationDTO;
-import com.goorm.roomflow.domain.user.dto.UserTO;
+import com.goorm.roomflow.domain.user.dto.*;
 import com.goorm.roomflow.domain.user.entity.SocialAccount;
 import com.goorm.roomflow.domain.user.entity.User;
 import com.goorm.roomflow.domain.user.entity.UserRole;
@@ -121,6 +118,17 @@ public class UserService {
         }
         return userMapper.toUserTO(user);
     }
+
+    public UserDto getUserByEmail(String email) {
+        User user = userJpaRepository.findByEmail(email);
+
+        if (user == null || user.isDeleted()) {
+            throw new IllegalArgumentException("사용자를 찾을 수 없습니다.");
+        }
+
+        return UserDto.from(user);
+    }
+
 
     public List<SocialAccount> findSocialAccountsByUserId(Long userId) {
         return socialAccountRepository.findAll().stream()
