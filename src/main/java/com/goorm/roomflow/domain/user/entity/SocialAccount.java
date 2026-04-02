@@ -36,6 +36,9 @@ public class SocialAccount {
 	@Column(nullable = false, length = 100)
 	private String providerUserId;
 
+	@Column(name ="refresh_token")
+	private String refreshToken;
+
 	@CreatedDate
 	@Column(updatable = false, nullable = false)
 	private LocalDateTime createdAt;

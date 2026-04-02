@@ -98,7 +98,7 @@ public class SecurityConfig {
 								"/css/**", "/js/**", "/images/**"
 						).permitAll()
 						.requestMatchers(HttpMethod.GET, "/rooms/**").permitAll()
-						.requestMatchers("/reservations/**").authenticated()
+						.requestMatchers("/reservations/**", "/users/mypage/**").authenticated()
 						.anyRequest().authenticated()
 				)
 				.formLogin(form -> form
