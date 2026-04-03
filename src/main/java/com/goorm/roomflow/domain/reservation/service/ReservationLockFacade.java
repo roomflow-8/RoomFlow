@@ -39,7 +39,7 @@ public class ReservationLockFacade {
 
         try {
             // 0초 대기, 트랜잭션 끝날 때까지 대기
-            acquired = multiLock.tryLock(0, TimeUnit.SECONDS);
+            acquired = multiLock.tryLock(1, 10, TimeUnit.SECONDS);
 
             if (!acquired) {
                 throw new BusinessException(ErrorCode.ALREADY_PROCESSING_RESERVATION);
