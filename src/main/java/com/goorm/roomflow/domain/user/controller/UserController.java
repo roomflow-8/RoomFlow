@@ -6,6 +6,7 @@ import com.goorm.roomflow.domain.user.dto.UserTO;
 import com.goorm.roomflow.domain.user.service.CustomUser;
 import com.goorm.roomflow.domain.user.service.EmailService;
 import com.goorm.roomflow.domain.user.service.UserService;
+import com.goorm.roomflow.global.exception.BusinessException;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -31,14 +32,37 @@ public class UserController {
 	@GetMapping("/login")
 	public String loginPage(
 			@RequestParam(required = false) String error,
-			@ModelAttribute("successMsg") String successMsg,
+			@RequestParam(required = false) String email,
+			HttpSession session,
 			Model model) {
 
-		if (error != null) {
+		if ("LOGIN_FAILED".equals(error)) {
 			model.addAttribute("errorMsg", "이메일 또는 비밀번호가 올바르지 않습니다.");
 		}
 
+		if ("USER_DELETED".equals(error)) {
+			model.addAttribute("showRestoreAlert", true);
+			model.addAttribute("restoreEmail", email);
+		}
 		return "user/login";
+	}
+
+	// 계정 복구
+	@PostMapping("/restore")
+	public String restoreUser(
+			@RequestParam String email,
+			HttpSession session,
+			RedirectAttributes redirectAttributes
+	) {
+
+		userService.restoreUserByEmail(email);
+
+		session.removeAttribute("restoreEmail");
+
+		redirectAttributes.addFlashAttribute("message", "계정이 복구되었습니다.\n다시 로그인해 주세요.");
+		redirectAttributes.addFlashAttribute("alertType", "success");
+
+		return "redirect:/users/login";
 	}
 
 	// 내 예약 목록 페이지 렌더링
@@ -128,18 +152,26 @@ public class UserController {
 	public String deleteAccount(
 			@AuthenticationPrincipal CustomUser currentUser,
 			HttpSession session,
-			RedirectAttributes redirectAttributes) {
+			RedirectAttributes redirectAttributes
+	) {
 
 		if (currentUser == null) {
 			return "redirect:/users/login";
 		}
 		try {
-			userService.deleteAccount(currentUser.getEmail());
+			userService.deleteAccount(currentUser.getUserId());
 			session.invalidate();
-			redirectAttributes.addFlashAttribute("successMsg", "회원탈퇴가 완료되었습니다.");
+			redirectAttributes.addFlashAttribute("alertType", "success");
+			redirectAttributes.addFlashAttribute(
+					"message",
+					"회원탈퇴가 완료되었습니다.<br>7일 이내 로그인하면 복구가 가능합니다."
+			);
+
 			return "redirect:/users/login";
-		} catch (IllegalArgumentException e) {
-			redirectAttributes.addFlashAttribute("errorMsg", e.getMessage());
+		} catch (BusinessException e) {
+
+			redirectAttributes.addFlashAttribute("alertType", "error");
+			redirectAttributes.addFlashAttribute("message", e.getMessage());
 			return "redirect:/users/mypage";
 		}
 	}
@@ -203,7 +235,8 @@ public class UserController {
 			session.removeAttribute("emailTarget");
 			session.removeAttribute("emailVerified");
 			session.removeAttribute("emailVerifiedFor");
-			redirectAttributes.addFlashAttribute("successMsg", "회원가입이 완료되었습니다. 로그인해주세요.");
+			redirectAttributes.addFlashAttribute("alertType", "success");
+			redirectAttributes.addFlashAttribute("message", "회원가입이 완료되었습니다.\n로그인해주세요.");
 			return "redirect:/users/login";
 		} catch (IllegalArgumentException e) {
 			model.addAttribute("errorMsg", e.getMessage());

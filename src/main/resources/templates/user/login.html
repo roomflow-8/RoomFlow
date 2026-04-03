@@ -7,6 +7,8 @@
     <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" th:href="@{/css/style.css}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
 </head>
 <body class="min-h-screen bg-gray-50 flex items-center justify-center px-4">
 
@@ -76,7 +78,36 @@
     <a th:href="@{/rooms}" class="block">
         <button type="button" class="h-10 w-full rounded-lg border-0 bg-transparent text-sm text-gray-500 transition-colors hover:bg-gray-100">홈으로 돌아가기</button>
     </a>
+
+    <form id="restoreForm" th:action="@{/users/restore}" method="post" style="display:none;">
+        <input type="hidden" name="email" th:value="${restoreEmail}">
+    </form>
 </div>
+
+<script th:inline="javascript">
+
+    const showRestoreAlert = [[${showRestoreAlert != null}]] ? [[${showRestoreAlert}]] : false;
+
+    if (showRestoreAlert) {
+        window.addEventListener('load', function () {
+            Swal.fire({
+                icon: 'warning',
+                title: '삭제된 계정입니다',
+                text: '계정을 복구하시겠습니까?',
+                showCancelButton: true,
+                confirmButtonText: '복구하기',
+                cancelButtonText: '취소'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.getElementById('restoreForm');
+                    if (form) {
+                        form.submit();
+                    }
+                }
+            });
+        });
+    }
+</script>
 
 </body>
 </html>

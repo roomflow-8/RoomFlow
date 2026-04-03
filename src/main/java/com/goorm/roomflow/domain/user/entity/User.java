@@ -37,7 +37,7 @@ public class User extends BaseEntity {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
-	@OneToMany(mappedBy = "user")
+	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<SocialAccount> socialAccounts = new ArrayList<>();
 
 	@Builder
@@ -52,6 +52,8 @@ public class User extends BaseEntity {
 	public void delete() {
 		this.deletedAt = LocalDateTime.now();
 	}
+
+	public void restore() { this.deletedAt = null; }
 
 	public boolean isDeleted() {
 		return this.deletedAt != null;

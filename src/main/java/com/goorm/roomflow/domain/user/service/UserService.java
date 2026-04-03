@@ -14,7 +14,10 @@ import com.goorm.roomflow.domain.user.mapper.UserMapper;
 import com.goorm.roomflow.domain.user.repository.SocialAccountRepository;
 import com.goorm.roomflow.domain.user.repository.UserJpaRepository;
 import com.goorm.roomflow.domain.user.validator.UserValidator;
+import com.goorm.roomflow.global.code.ErrorCode;
+import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +32,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -39,6 +43,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ReservationRepository reservationRepository;
     private final ReservationEquipmentRepository reservationEquipmentRepository;
+    private final SocialAccountService socialAccountService;
 
 
     public void signup(SignupRequestDTO request) {
@@ -102,13 +107,78 @@ public class UserService {
         userJpaRepository.save(user);
     }
 
-    public void deleteAccount(String email) {
-        User user = userJpaRepository.findByEmail(email);
-        if (user == null || user.isDeleted()) {
-            throw new IllegalArgumentException("존재하지 않는 사용자입니다.");
+    @Transactional
+    public void deleteAccount(Long userId) {
+
+        // 회원 탈퇴 요청 시작 로그
+        log.info("회원 탈퇴 요청 시작 - userId={}", userId);
+
+        User user = userJpaRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        if (user.isDeleted()) {
+            log.warn("회원 탈퇴 실패 - 이미 탈퇴된 사용자 - userId={}", userId);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
-        user.delete();
-        userJpaRepository.save(user);
+
+        user.delete(); // soft delete 삭제
+
+        log.info("회원 탈퇴 완료 - userId={}, deletedAt={}", userId, user.getDeletedAt());
+    }
+
+    @Transactional
+    public void hardDeleteUser(User user) {
+        log.info("회원 영구 삭제 시작 - userId={}, email={}", user.getUserId(), user.getEmail());
+
+        if (!user.isDeleted()) {
+            log.warn("회원 영구 삭제 실패 - 탈퇴 상태 아님 - userId={}", user.getUserId());
+            throw new BusinessException(ErrorCode.USER_NOT_DELETED);
+        }
+
+        deleteUserWithSocialAccounts(user);
+
+        log.info("회원 영구 삭제 완료 - userId={}", user.getUserId());
+    }
+
+    @Transactional
+    public void hardDeleteUserById(Long userId) {
+        log.info("회원 단건 영구 삭제 시작 - userId={}", userId);
+
+        User user = userJpaRepository.findWithSocialAccountsByUserId(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        deleteUserWithSocialAccounts(user);
+
+        log.info("회원 단건 영구 삭제 완료 - userId={}", userId);
+    }
+
+    private void deleteUserWithSocialAccounts(User user) {
+        socialAccountService.unlinkAll(user);
+        userJpaRepository.delete(user);
+    }
+
+    @Transactional
+    public void restoreUserByEmail(String email) {
+
+        log.info("회원 복구 요청 시작 - email={}", email);
+
+        User user = userJpaRepository.findByEmail(email);
+
+        if (user == null) {
+            log.warn("회원 복구 실패 - 존재하지 않는 사용자 email={}", email);
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        if (!user.isDeleted()) {
+            log.warn("회원 복구 실패 - 이미 활성 상태 email={}, deleted=false", email);
+            throw new BusinessException(ErrorCode.USER_NOT_DELETED);
+        }
+
+        log.info("회원 복구 진행 - email={}, deletedAt={}", email, user.getDeletedAt());
+
+        user.restore();
+
+        log.info("회원 복구 완료 - email={}", email);
     }
 
     public UserTO findByEmail(String email) {

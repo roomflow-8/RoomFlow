@@ -51,4 +51,7 @@ public class SocialAccount {
 		this.createdAt = createdAt;
 	}
 
+	public void updateRefreshToken(String refreshToken) {
+		this.refreshToken = refreshToken;
+	}
 }

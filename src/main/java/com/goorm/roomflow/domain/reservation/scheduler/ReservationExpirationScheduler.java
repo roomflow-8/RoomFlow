@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Component
@@ -33,6 +34,8 @@ public class ReservationExpirationScheduler {
     private final ApplicationEventPublisher eventPublisher;
     private final UserJpaRepository userRepository;
 
+    private final AtomicBoolean running = new AtomicBoolean(false);
+
     /**
      * 일정 시간 이상 결제되지 않은 PENDING 예약 자동 만료 처리
      */
@@ -40,57 +43,66 @@ public class ReservationExpirationScheduler {
     @Transactional
     public void expirePendingReservations() {
 
-        // 만료 기준 시간 계산 (현재 시간 - 정책 시간)
-        LocalDateTime threshold = LocalDateTime.now().minusMinutes(PENDING_MINUTES);
-
-        log.info("[ReservationExpire] PENDING 예약 만료 처리 시작 - threshold={}", threshold);
-
-        User admin = userRepository.findById(SYSTEM_USER_ID).get();
-
-        // Pending 대상 조회
-        List<Reservation> expiredReservations =
-                reservationRepository.findExpiredPendingReservations(
-                        ReservationStatus.PENDING,
-                        threshold
-                );
-
-        if (expiredReservations.isEmpty()) {
-            log.info("[ReservationExpire] PENDING 예약 만료 처리 완료 - 만료 대상 없음");
+        if (!running.compareAndSet(false, true)) {
+            log.warn("이전 작업 실행 중");
             return;
         }
 
-        log.info("[ReservationExpire] 만료 대상 예약 수 = {}", expiredReservations.size());
+        try {
 
-        for (Reservation reservation : expiredReservations) {
-            reservation.expire(EXPIRE_REASON);
+            // 만료 기준 시간 계산 (현재 시간 - 정책 시간)
+            LocalDateTime threshold = LocalDateTime.now().minusMinutes(PENDING_MINUTES);
 
-            List<ReservationRoom> reservationRooms = reservationRoomRepository
-                    .findByReservation(reservation);
+            log.info("[ReservationExpire] PENDING 예약 만료 처리 시작 - threshold={}", threshold);
 
-            // 슬롯 복구
-            for (ReservationRoom reservationRoom : reservationRooms) {
-                reservationRoom.getRoomSlot().updateActiveStatus(true);
+            User admin = userRepository.findById(SYSTEM_USER_ID).get();
+
+            // Pending 대상 조회
+            List<Reservation> expiredReservations =
+                    reservationRepository.findExpiredPendingReservations(
+                            ReservationStatus.PENDING,
+                            threshold
+                    );
+
+            if (expiredReservations.isEmpty()) {
+                log.info("[ReservationExpire] PENDING 예약 만료 처리 완료 - 만료 대상 없음");
+                return;
             }
 
-            // 연결 엔티티 삭제
-            reservationRoomRepository.deleteAll(reservationRooms);
+            log.info("[ReservationExpire] 만료 대상 예약 수 = {}", expiredReservations.size());
 
-            eventPublisher.publishEvent(new ReservationStatusChangedEvent(
-                    reservation,
-                    TargetType.RESERVATION,
-                    reservation.getReservationId(),
-                    ReservationStatus.PENDING,
-                    reservation.getStatus(),
-                    admin,
-                    reservation.getCancelReason()
-            ));
+            for (Reservation reservation : expiredReservations) {
+                reservation.expire(EXPIRE_REASON);
 
-            log.info("회의실 예약 상태 변경 이벤트 발행 - reservationId={}, {} -> {}", reservation.getReservationId(), ReservationStatus.PENDING, reservation.getStatus());
+                List<ReservationRoom> reservationRooms = reservation.getReservationRooms();
+
+                // 슬롯 복구
+                for (ReservationRoom reservationRoom : reservationRooms) {
+                    reservationRoom.getRoomSlot().updateActiveStatus(true);
+                }
+
+                // 연결 엔티티 삭제
+                reservationRoomRepository.deleteAll(reservationRooms);
+
+                eventPublisher.publishEvent(new ReservationStatusChangedEvent(
+                        reservation,
+                        TargetType.RESERVATION,
+                        reservation.getReservationId(),
+                        ReservationStatus.PENDING,
+                        reservation.getStatus(),
+                        admin,
+                        reservation.getCancelReason()
+                ));
+
+                log.info("회의실 예약 상태 변경 이벤트 발행 - reservationId={}, {} -> {}", reservation.getReservationId(), ReservationStatus.PENDING, reservation.getStatus());
 
 
+            }
+
+            log.info("[ReservationExpire] PENDING 예약 만료 처리 완료 - totalExpired={}", expiredReservations.size());
+        } finally {
+            running.set(false);
         }
-
-        log.info("[ReservationExpire] PENDING 예약 만료 처리 완료 - totalExpired={}", expiredReservations.size());
     }
 
 

@@ -1,10 +1,13 @@
 package com.goorm.roomflow.global.interceptor;
 
-import com.goorm.roomflow.domain.user.dto.UserTO;
+import com.goorm.roomflow.domain.user.dto.UserDto;
+import com.goorm.roomflow.domain.user.service.CustomUser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -87,16 +90,16 @@ public class LoggingInterceptor implements HandlerInterceptor {
     }
 
     private Long extractUserId(HttpServletRequest request) {
-        HttpSession session = request.getSession();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if(session == null) {
+        if (authentication == null || !authentication.isAuthenticated()) {
             return null;
         }
 
-        Object loginUser = session.getAttribute("loginUser");
+        Object principal = authentication.getPrincipal();
 
-        if(loginUser instanceof UserTO userTO) {
-            return userTO.getUserId();
+        if (principal instanceof CustomUser customUser) {
+            return customUser.getUserId();
         }
 
         return null;
