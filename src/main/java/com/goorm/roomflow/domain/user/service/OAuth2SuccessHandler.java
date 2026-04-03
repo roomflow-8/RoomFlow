@@ -8,6 +8,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
@@ -17,6 +20,9 @@ import java.io.IOException;
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
+
+	private final OAuth2AuthorizedClientService authorizedClientService;
+	private final SocialAccountService socialAccountService;
 
 	private final UserJpaRepository userJpaRepository;
 /* 원본
@@ -79,6 +85,30 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
 			request.getSession().setAttribute("loginUser", loginUser);
 			log.info("소셜 로그인 - 세션 저장 완료: userId={}", customUser.getUserId());
+
+			// refresh Token 저장
+			if(authentication instanceof OAuth2AuthenticationToken oauth2Token) {
+				String provider = oauth2Token.getAuthorizedClientRegistrationId();
+
+				OAuth2AuthorizedClient authorizedClient =
+						authorizedClientService.loadAuthorizedClient(
+								provider,
+								oauth2Token.getName()
+						);
+
+				if (authorizedClient != null && authorizedClient.getRefreshToken() != null) {
+					String refreshToken = authorizedClient.getRefreshToken().getTokenValue();
+
+					socialAccountService.updateRefreshToken( customUser.getUserId(), provider, refreshToken);
+
+					log.info("refreshToken 저장 완료: userId={}, provider={}",
+							customUser.getUserId(), provider);
+				} else {
+					log.info("refreshToken 없음: userId={}, provider={}",
+							customUser.getUserId(), provider);
+				}
+			}
+
 		} else {
 			log.warn("예상치 못한 Principal 타입: {}", authentication.getPrincipal().getClass());
 		}

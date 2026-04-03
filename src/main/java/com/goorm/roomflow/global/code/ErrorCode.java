@@ -17,6 +17,13 @@ public enum ErrorCode {
 
 	// 사용자
 	USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_001", "사용자를 찾을 수 없습니다."),
+	USER_NOT_DELETED(HttpStatus.BAD_REQUEST, "USER_002", "탈퇴 처리된 회원만 영구 삭제할 수 있습니다."),
+	USER_DELETED(HttpStatus.UNAUTHORIZED, "USER_003", "탈퇴 처리된 계정입니다."),
+
+	UNSUPPORTED_SOCIAL_PROVIDER(HttpStatus.BAD_REQUEST, "OAUTH_001", "지원하지 않는 소셜 제공자입니다."),
+	SOCIAL_ACCESS_TOKEN_NOT_FOUND(HttpStatus.BAD_REQUEST, "OAUTH_002","소셜 access token이 존재하지 않습니다."),
+	SOCIAL_REFRESH_TOKEN_NOT_FOUND(HttpStatus.BAD_REQUEST, "OAUTH_003","소셜 refresh token이 존재하지 않습니다."),
+	SOCIAL_UNLINK_FAILED(HttpStatus.BAD_GATEWAY, "OAUTH_004", "소셜 계정 연동 해제에 실패했습니다."),
 
 	// 회의실
 	ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "ROOM_001", "회의실을 찾을 수 없습니다."),

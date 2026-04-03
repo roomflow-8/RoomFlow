@@ -41,7 +41,7 @@ public class ReservationHistory {
 	@Column(nullable = false)
 	private ReservationStatus toStatus;
 
-	@ManyToOne(fetch = FetchType.LAZY)
+	@ManyToOne(fetch = FetchType.LAZY, optional = true)
 	@JoinColumn(name = "changed_by")
 	private User changedBy;
 

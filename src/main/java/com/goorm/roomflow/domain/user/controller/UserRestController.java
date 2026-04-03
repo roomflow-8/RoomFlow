@@ -1,6 +1,7 @@
 package com.goorm.roomflow.domain.user.controller;
 
 import com.goorm.roomflow.domain.user.service.CustomUser;
+import com.goorm.roomflow.domain.user.service.UserService;
 import com.goorm.roomflow.global.code.SuccessCode;
 import com.goorm.roomflow.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,10 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/v1/users")
 public class UserRestController {
 
+	private final UserService userService;
 
 	/*
 	//원본
@@ -74,4 +73,14 @@ public class UserRestController {
 				SuccessCode.OK, response);
 	}
 
+	@Operation(summary = "회원 영구 삭제", description = "소셜로그인 연결을 끊고, 개인 정보를 영구 삭제합니다.")
+	@DeleteMapping("/delete/{userId}")
+	public ResponseEntity<ApiResponse<Void>> deleteUser(
+			@AuthenticationPrincipal CustomUser currentUser,
+			@PathVariable Long userId
+	) {
+		userService.hardDeleteUserById(userId);
+
+		return ApiResponse.success(SuccessCode.OK);
+	}
 }

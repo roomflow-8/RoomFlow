@@ -6,6 +6,7 @@
     <title>마이페이지 - RoomFlow</title>
     <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body class="min-h-screen bg-gray-50">
@@ -118,28 +119,20 @@
                 </svg>
                 회원 탈퇴
             </div>
-            <p class="text-sm text-gray-500 mt-1">계정을 삭제하면 모든 데이터가 영구적으로 삭제됩니다</p>
+            <p class="text-sm text-gray-500 mt-1">계정을 삭제하면 7일 동안 복구할 수 있으며, 이후 모든 데이터는 영구적으로 삭제됩니다.</p>
         </div>
         <div class="p-6 space-y-4">
-            <button type="button" class="inline-flex items-center justify-center h-[44px] px-4 rounded-md bg-red-600 text-sm font-medium text-white hover:bg-red-700 transition-colors" onclick="openDeleteModal()">회원 탈퇴</button>
+            <form id="deleteForm" th:action="@{/users/mypage/delete}" method="post" class="inline">
+                <button type="button"
+                        onclick="openDeleteModal()"
+                        class="inline-flex items-center justify-center h-[44px] px-4 rounded-md bg-red-600 text-sm font-medium text-white hover:bg-red-700 transition-colors">
+                    회원 탈퇴
+                </button>
+            </form>
         </div>
     </div>
 
 </main>
-
-<!-- 회원 탈퇴 확인 모달 -->
-<div class="hidden fixed inset-0 z-[100] items-center justify-center bg-black/40" id="deleteModal">
-    <div class="w-full max-w-md rounded-xl bg-white p-7 shadow-2xl">
-        <h2 class="text-lg font-bold text-gray-900 mb-2">정말 탈퇴하시겠습니까?</h2>
-        <p class="text-sm text-gray-500 leading-6 mb-5">회원 탈퇴 시 모든 예약 내역과 개인정보가 영구적으로 삭제되며, 복구할 수 없습니다. 이 작업은 되돌릴 수 없습니다.</p>
-        <div class="flex justify-end gap-2">
-            <button type="button" class="inline-flex items-center justify-center h-[44px] px-4 rounded-md border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors" onclick="closeDeleteModal()">취소</button>
-            <form th:action="@{/users/mypage/delete}" method="post" class="inline">
-                <button type="submit" class="inline-flex items-center justify-center h-[44px] px-4 rounded-md bg-red-600 text-sm font-medium text-white hover:bg-red-700 transition-colors">탈퇴하기</button>
-            </form>
-        </div>
-    </div>
-</div>
 
 <script>
     // 이름 수정 토글
@@ -166,21 +159,28 @@
 
     // 회원 탈퇴 모달
     function openDeleteModal() {
-        const modal = document.getElementById('deleteModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
+        Swal.fire({
+            title: '정말 탈퇴하시겠습니까?',
+            html: `
+            <div style="text-align:left; word-break:keep-all;">
+                계정을 삭제하면 <b>7일 동안만 복구</b>할 수 있습니다.<br>
+                이후 모든 개인정보는 영구적으로 삭제됩니다.
+            </div>
+        `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '탈퇴하기',
+            cancelButtonText: '취소',
+            confirmButtonColor: '#dc2626',
+            reverseButtons: true
+        }).then((result) => {
 
-    function closeDeleteModal() {
-        const modal = document.getElementById('deleteModal');
-        modal.classList.remove('flex');
-        modal.classList.add('hidden');
-    }
+            if (result.isConfirmed) {
+                document.getElementById('deleteForm').submit();
+            }
 
-    // 모달 바깥 클릭 시 닫기
-    document.getElementById('deleteModal').addEventListener('click', function(e) {
-        if (e.target === this) closeDeleteModal();
-    });
+        });
+    }
 </script>
 
 </body>

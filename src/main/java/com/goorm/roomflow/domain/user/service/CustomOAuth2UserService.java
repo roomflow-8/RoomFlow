@@ -6,6 +6,8 @@ import com.goorm.roomflow.domain.user.entity.UserRole;
 import com.goorm.roomflow.domain.user.oauth.OAuth2UserInfo;
 import com.goorm.roomflow.domain.user.repository.SocialAccountRepository;
 import com.goorm.roomflow.domain.user.repository.UserJpaRepository;
+import com.goorm.roomflow.global.code.ErrorCode;
+import com.goorm.roomflow.global.exception.CustomAuthenticationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -143,7 +145,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 			log.info("소셜 로그인 신규 유저 생성: provider={}, userId={}",
 					userInfo.getProvider(), user.getUserId());
 		} else if (user.isDeleted()) {
-			throw new OAuth2AuthenticationException("삭제된 계정입니다.");
+			throw new CustomAuthenticationException(
+					ErrorCode.USER_DELETED,
+					user.getEmail()
+			);
 		}
 
 

@@ -17,6 +17,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     @Query("""
         select r
         from Reservation r
+        left join fetch r.reservationRooms rr
+        left join fetch rr.roomSlot rs
         where r.status = :status
           and r.createdAt <= :threshold
     """)
