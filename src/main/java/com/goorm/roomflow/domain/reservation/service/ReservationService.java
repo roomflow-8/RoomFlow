@@ -5,6 +5,7 @@ import com.goorm.roomflow.domain.reservation.dto.request.*;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.entity.Reservation;
+import com.goorm.roomflow.domain.user.service.CustomUser;
 
 import java.util.List;
 
@@ -12,7 +13,7 @@ public interface ReservationService {
 
     Reservation getReservation(Long userId, Long reservationId);
 
-    ReservationRoomRes readReservationRoom(Long userId, Long reservationId);
+    ReservationRoomRes readReservationRoom(CustomUser user, Long reservationId);
     ReservationRoomRes createReservationRoomTransactional(Long userId, CreateReservationRoomReq request) ;
 
     //비품 관련 메서드

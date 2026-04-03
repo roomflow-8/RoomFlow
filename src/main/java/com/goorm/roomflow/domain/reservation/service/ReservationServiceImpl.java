@@ -27,6 +27,7 @@ import com.goorm.roomflow.domain.room.repository.RoomSlotRepository;
 import com.goorm.roomflow.domain.user.entity.User;
 import com.goorm.roomflow.domain.user.entity.UserRole;
 import com.goorm.roomflow.domain.user.repository.UserJpaRepository;
+import com.goorm.roomflow.domain.user.service.CustomUser;
 import com.goorm.roomflow.global.code.ErrorCode;
 import com.goorm.roomflow.global.exception.BusinessException;
 import jakarta.annotation.Resource;
@@ -94,30 +95,25 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	@Override
 	@Transactional(readOnly = true)
-	public ReservationRoomRes readReservationRoom(Long userId, Long reservationId) {
+	public ReservationRoomRes readReservationRoom(CustomUser user, Long reservationId) {
 		long start = System.currentTimeMillis();
+		Long userId = user.getUserId();
 
 		log.info("회의실 예약 조회 시작 - userId={}, reservationId={}", userId, reservationId);
 
-		// 1. 회원 조회
-		User user = userRepository.findById(userId)
-				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-
-		// 2. 예약 조회
+		// 1. 예약 조회
 		Reservation reservation = reservationRepository.findByIdWithUserAndMeetingRoom(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
-		// 3. 권한 검증
-		if (user.getRole().equals(UserRole.USER)
-				&& !user.getUserId().equals(reservation.getUser().getUserId())) {
-
+		// 2. 권한 검증
+		if (!user.isAdmin() && !userId.equals(reservation.getUser().getUserId())) {
 			log.warn("예약 조회 권한 없음 - userId={}, reservationId={}, reservationOwnerId={}",
 					userId, reservationId, reservation.getUser().getUserId());
 
 			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
 		}
 
-		// 4. 회의실 예약 조회
+		// 3. 회의실 예약 조회
 		List<ReservationRoom> reservationRooms = reservationRoomRepository.findByReservation(reservation);
 
 		if (reservationRooms.isEmpty()) {
@@ -128,7 +124,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 		MeetingRoom meetingRoom = reservation.getMeetingRoom();
 
-		// 5. 시간 조회
+		// 4. 시간 조회
 		List<RoomSlot> roomSlots = reservationRooms.stream()
 				.map(ReservationRoom::getRoomSlot)
 				.sorted(Comparator.comparing(RoomSlot::getSlotStartAt))
@@ -137,7 +133,7 @@ public class ReservationServiceImpl implements ReservationService {
 		LocalDate reservationDate = roomSlots.getFirst().getSlotStartAt().toLocalDate();
 		List<ReservationTimeSlot> reservationTimeSlots = makeReservationTimeSlot(roomSlots);
 
-		// 6. 비품 예약 조회
+		// 5. 비품 예약 조회
 		List<EquipmentItem> equipmentItems = reservationEquipmentRepository
 				.findByReservation_ReservationIdAndStatus(reservationId, ReservationStatus.PENDING)
 				.stream()
