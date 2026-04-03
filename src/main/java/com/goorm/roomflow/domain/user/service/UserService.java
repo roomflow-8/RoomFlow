@@ -328,10 +328,10 @@ public class UserService {
                 .filter(a -> a != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 취소된 예약: reservation 테이블의 total_amount 사용
-        // 예정/완료 예약: 회의실 금액 + 비품 금액 직접 계산
+        // 취소된 예약: 취소된 회의실 금액 + 취소된 비품 금액으로 직접 계산
+        // 예정/완료 예약: 회의실 금액 + 현재 대여 중인 비품 금액으로 계산
         BigDecimal grandTotal = r.getStatus() == ReservationStatus.CANCELLED
-                ? r.getTotalAmount()
+                ? roomAmount.add(cancelledEquipmentTotalAmount)
                 : roomAmount.add(equipmentTotalAmount);
         BigDecimal hourlyPrice = r.getMeetingRoom().getHourlyPrice();
         int totalHours = rooms.size();
