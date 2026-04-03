@@ -54,7 +54,7 @@ public class ReservationRestController {
     public ResponseEntity<ApiResponse<ReservationRoomRes>> readReservationRoom(
              @AuthenticationPrincipal CustomUser currentUser,
             @RequestParam Long reservationId) {
-        ReservationRoomRes reservationRoomRes = reservationService.readReservationRoom(currentUser.getUserId(), reservationId);
+        ReservationRoomRes reservationRoomRes = reservationService.readReservationRoom(currentUser, reservationId);
 
         return ApiResponse.success(
                 SuccessCode.RESERVATION_SUCCESS,

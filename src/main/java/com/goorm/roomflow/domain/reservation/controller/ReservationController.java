@@ -65,7 +65,7 @@ public class ReservationController {
 			@PathVariable("reservationId") Long reservationId,
 			Model model) {
 
-		ReservationRoomRes reservationRoomRes = reservationService.readReservationRoom(currentUser.getUserId(), reservationId);
+		ReservationRoomRes reservationRoomRes = reservationService.readReservationRoom(currentUser, reservationId);
 
 		model.addAttribute("reservationRoom", reservationRoomRes);
 		model.addAttribute("hasEquipments", reservationRoomRes.equipments() != null && !reservationRoomRes.equipments().isEmpty());
