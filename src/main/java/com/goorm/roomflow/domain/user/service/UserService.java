@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -284,6 +285,44 @@ public class UserService {
                 .filter(a -> a != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // 취소된 비품을 cancelledAt 기준(초 단위)으로 그룹화 → 취소 이벤트별로 묶음
+        List<CancelledEquipmentGroup> cancelledEquipmentGroups = rawEquipments.stream()
+                .filter(e -> e.getStatus() == ReservationStatus.CANCELLED)
+                .collect(Collectors.groupingBy(e ->
+                        e.getCancelledAt() != null
+                                ? e.getCancelledAt().truncatedTo(ChronoUnit.SECONDS)
+                                : LocalDateTime.MIN
+                ))
+                .entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> {
+                    List<UserEquipmentItem> items = entry.getValue().stream()
+                            .map(e -> new UserEquipmentItem(
+                                    e.getReservationEquipmentId(),
+                                    e.getEquipment().getEquipmentName(),
+                                    e.getQuantity(),
+                                    e.getTotalAmount()
+                            ))
+                            .toList();
+                    BigDecimal groupTotal = items.stream()
+                            .map(UserEquipmentItem::totalAmount)
+                            .filter(a -> a != null)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                    return new CancelledEquipmentGroup(
+                            entry.getValue().get(0).getCancelledAt(),
+                            entry.getValue().get(0).getCancelReason(),
+                            items,
+                            groupTotal
+                    );
+                })
+                .toList();
+
+        BigDecimal cancelledEquipmentTotalAmount = cancelledEquipmentGroups.stream()
+                .map(CancelledEquipmentGroup::totalAmount)
+                .filter(a -> a != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+
         BigDecimal roomAmount = rooms.stream()
                 .map(ReservationRoom::getAmount)
                 .filter(a -> a != null)
@@ -313,29 +352,13 @@ public class UserService {
                 .slotEndTimes(mergedEnds)
                 .equipments(equipmentItems)
                 .equipmentTotalAmount(equipmentTotalAmount)
+                .cancelledEquipmentGroups(cancelledEquipmentGroups)
+                .cancelledEquipmentTotalAmount(cancelledEquipmentTotalAmount)
                 .roomHourlyPrice(hourlyPrice)
                 .totalSlotHours(totalHours)
                 .grandTotalAmount(grandTotal)
                 .build();
     }
-
-    // 같은 날짜 + 같은 회의실 예약을 하나의 카드로 그룹핑
-   /* private List<UserReservationDTO> groupByRoomAndDate(List<UserReservationDTO> dtos) {
-        Map<String, List<UserReservationDTO>> grouped = dtos.stream()
-                .collect(Collectors.groupingBy(dto -> {
-                    String date = dto.slotStartAt() != null
-                            ? dto.slotStartAt().toLocalDate().toString()
-                            : "";
-                    return dto.roomName() + "|" + date;
-                }));
-
-        return grouped.values().stream()
-                .map(this::mergeGroup)
-                .sorted(Comparator.comparing(
-                        dto -> dto.slotStartAt() != null ? dto.slotStartAt() : LocalDateTime.MIN
-                ))
-                .toList();
-    }*/
 
     // 같은 그룹으로 묶인 예약들을 하나의 DTO로 합산
     private UserReservationDTO mergeGroup(List<UserReservationDTO> group) {
@@ -372,6 +395,18 @@ public class UserService {
                 .filter(a -> a != null)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+
+        List<CancelledEquipmentGroup> allCancelledEquipmentGroups = group.stream()
+                .flatMap(d -> d.cancelledEquipmentGroups() != null
+                        ? d.cancelledEquipmentGroups().stream()
+                        : Stream.empty())
+                .toList();
+
+        BigDecimal cancelledEquipmentTotalAmount = group.stream()
+                .map(UserReservationDTO::cancelledEquipmentTotalAmount)
+                .filter(a -> a != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         int totalSlotHours = group.stream().mapToInt(UserReservationDTO::totalSlotHours).sum();
 
         BigDecimal grandTotal = totalAmount.add(equipmentTotalAmount);
@@ -392,6 +427,8 @@ public class UserService {
                 .slotEndTimes(mergedEnds)
                 .equipments(allEquipments)
                 .equipmentTotalAmount(equipmentTotalAmount)
+                .cancelledEquipmentGroups(allCancelledEquipmentGroups)
+                .cancelledEquipmentTotalAmount(cancelledEquipmentTotalAmount)
                 .roomHourlyPrice(first.roomHourlyPrice())
                 .totalSlotHours(totalSlotHours)
                 .grandTotalAmount(grandTotal)
@@ -406,7 +443,13 @@ public class UserService {
             case "completed" -> dto.status() == ReservationStatus.CONFIRMED
                     && dto.slotEndAt() != null
                     && dto.slotEndAt().isBefore(now);
-            case "cancelled" -> dto.status() == ReservationStatus.CANCELLED;
+            case "cancelled" -> dto.status() == ReservationStatus.CANCELLED
+                    || (
+                        dto.status() == ReservationStatus.CONFIRMED
+                        && dto.cancelledEquipmentGroups() != null
+                        && !dto.cancelledEquipmentGroups().isEmpty()
+                    );
+
             default -> dto.status() == ReservationStatus.CONFIRMED
                     && (dto.slotEndAt() == null || !dto.slotEndAt().isBefore(now));
         };
