@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="systemTabs(activeTab)" class="mb-8">
+
+    <!-- 제목 영역 -->
+    <div class="mb-4">
+        <h1 class="text-2xl font-bold text-gray-900">
+            시스템 관리
+        </h1>
+
+        <p class="mt-1 text-sm text-gray-500">
+            회의실, 비품, 시간 슬롯, 공지사항, 정책 및 휴일을 관리합니다
+        </p>
+    </div>
+
+
+    <!-- 탭 영역 -->
+    <div class="w-full rounded-2xl bg-gray-100 p-1.5">
+        <nav class="grid grid-cols-6 gap-1.5">
+
+            <a th:href="@{/admin/system/rooms}"
+               th:classappend="${activeTab == 'rooms'} ? 'bg-white shadow-sm text-black' : 'text-gray-700 hover:bg-white/60'"
+               class="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition">
+                <i data-lucide="calculator" class="w-4 h-4"></i>
+                회의실
+            </a>
+
+            <a th:href="@{/admin/system/equipments}"
+               th:classappend="${activeTab == 'equipments'} ? 'bg-white shadow-sm text-black' : 'text-gray-700 hover:bg-white/60'"
+               class="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition">
+                <i data-lucide="package" class="w-4 h-4"></i>
+                비품
+            </a>
+
+            <a th:href="@{/admin/system/roomslots}"
+               th:classappend="${activeTab == 'roomslots'} ? 'bg-white shadow-sm text-black' : 'text-gray-700 hover:bg-white/60'"
+               class="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition">
+                <i data-lucide="clock-3" class="w-4 h-4"></i>
+                시간 슬롯
+            </a>
+
+            <a th:href="@{/admin/system/notices}"
+               th:classappend="${activeTab == 'notices'} ? 'bg-white shadow-sm text-black' : 'text-gray-700 hover:bg-white/60'"
+               class="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition">
+                <i data-lucide="bell" class="w-4 h-4"></i>
+                공지사항
+            </a>
+
+            <a th:href="@{/admin/system/policies}"
+               th:classappend="${activeTab == 'policies'} ? 'bg-white shadow-sm text-black' : 'text-gray-700 hover:bg-white/60'"
+               class="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition">
+                <i data-lucide="shield-check" class="w-4 h-4"></i>
+                정책관리
+            </a>
+
+            <a th:href="@{/admin/system/holidays}"
+               th:classappend="${activeTab == 'holidays'} ? 'bg-white shadow-sm text-black' : 'text-gray-700 hover:bg-white/60'"
+               class="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition">
+                <i data-lucide="calendar-days" class="w-4 h-4"></i>
+                휴일관리
+            </a>
+
+        </nav>
+    </div>
+
+</div>
+
+</body>
+</html>

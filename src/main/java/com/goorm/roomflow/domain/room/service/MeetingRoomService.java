@@ -1,6 +1,7 @@
 package com.goorm.roomflow.domain.room.service;
 
 import com.goorm.roomflow.domain.room.dto.request.CreateRoomSlotsReq;
+import com.goorm.roomflow.domain.room.dto.response.MeetingRoomAdminRes;
 import com.goorm.roomflow.domain.room.dto.response.MeetingRoomListRes;
 
 import java.time.LocalDate;
@@ -10,4 +11,6 @@ public interface MeetingRoomService {
     MeetingRoomListRes getMeetingRoomsByDate(LocalDate date);
     void generateSlots(LocalDate targetDate);
     void generateSlotsForRoom(CreateRoomSlotsReq createRoomSlotsReq);
+
+    List<MeetingRoomAdminRes> readMeetingRoomAdminList();
 }

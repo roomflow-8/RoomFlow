@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<aside th:fragment="adminSidebar(currentMenu)"
+       class="w-64 min-h-screen bg-white border-r border-gray-200 px-4 py-6">
+
+    <div class="mb-6 px-2">
+        <h2 class="text-lg font-semibold text-gray-900">관리자 메뉴</h2>
+        <p class="text-sm text-gray-500 mt-1">RoomFlow Admin</p>
+    </div>
+
+    <nav class="flex flex-col gap-2">
+
+        <a th:href="@{/admin}"
+           th:classappend="${currentMenu == 'dashboard'} ? 'bg-black text-white hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
+           class="px-4 py-3 text-sm font-medium rounded-lg transition">
+            대시보드
+        </a>
+
+        <a th:href="@{/admin/users}"
+           th:classappend="${currentMenu == 'users'} ? 'bg-black text-white hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
+           class="px-4 py-3 text-sm font-medium rounded-lg transition">
+            회원관리
+        </a>
+
+        <a th:href="@{/admin/rooms}"
+           th:classappend="${currentMenu == 'system'} ? 'bg-black text-white hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
+           class="px-4 py-3 text-sm font-medium rounded-lg transition">
+            시스템관리
+        </a>
+
+        <a th:href="@{/admin/reservations}"
+           th:classappend="${currentMenu == 'reservations'} ? 'bg-black text-white hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
+           class="px-4 py-3 text-sm font-medium rounded-lg transition">
+            예약관리
+        </a>
+
+        <a th:href="@{/admin/sales}"
+           th:classappend="${currentMenu == 'sales'} ? 'bg-black text-white hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
+           class="px-4 py-3 text-sm font-medium rounded-lg transition">
+            매출관리
+        </a>
+
+    </nav>
+</aside>
+
+</body>
+</html>

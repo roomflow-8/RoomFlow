@@ -4,9 +4,7 @@ import com.goorm.roomflow.domain.reservation.entity.ReservationPolicy;
 import com.goorm.roomflow.domain.reservation.repository.ReservationPolicyRepository;
 import com.goorm.roomflow.domain.room.dto.RoomSlotInsertDto;
 import com.goorm.roomflow.domain.room.dto.request.CreateRoomSlotsReq;
-import com.goorm.roomflow.domain.room.dto.response.MeetingRoomListRes;
-import com.goorm.roomflow.domain.room.dto.response.MeetingRoomRes;
-import com.goorm.roomflow.domain.room.dto.response.RoomSlotRes;
+import com.goorm.roomflow.domain.room.dto.response.*;
 import com.goorm.roomflow.domain.room.entity.MeetingRoom;
 import com.goorm.roomflow.domain.room.entity.RoomSlot;
 import com.goorm.roomflow.domain.room.entity.RoomStatus;
@@ -306,6 +304,32 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
             return 1;
         }
         return 2;
+    }
+
+    /**
+     * 관리자 기능 구현
+     */
+
+    /**
+     * 관리자 회의실 조회
+     */
+    @Override
+    public List<MeetingRoomAdminRes> readMeetingRoomAdminList() {
+
+        List<MeetingRoom> rooms = meetingRoomRepository.findAll();
+
+        return rooms.stream()
+                .map(room -> new MeetingRoomAdminRes(
+                        room.getRoomId(),
+                        room.getRoomName(),
+                        room.getCapacity(),
+                        room.getDescription(),
+                        room.getHourlyPrice(),
+                        room.getStatus(),
+                        room.getImageUrl(),
+                        room.getTotalReservations()
+                ))
+                .toList();
     }
 
 }
