@@ -1,5 +1,6 @@
 package com.goorm.roomflow.global.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
@@ -8,13 +9,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+@Slf4j
 @Configuration
 public class RedissonConfig {
 
     @Bean
     public RedissonClient redissonClient(
             @Value("${spring.data.redis.host}") String host,
-            @Value("${spring.data.redis.port}") int port) {
+            @Value("${spring.data.redis.port}") int port
+    ) {
 
         Config config = new Config();
         SingleServerConfig serverConfig = config.useSingleServer()
