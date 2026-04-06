@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <head>
     <meta charset="UTF-8">
@@ -21,6 +22,9 @@
           method="post"
           onsubmit="return confirmGoBack(event, this)">
 
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+
         <th:block th:each="equipment : ${reservationRoom.equipments}">
             <input type="hidden"
                    name="reservationEquipmentIds"
@@ -37,6 +41,7 @@
     <h1 class="text-3xl font-bold mb-8">예약 확인</h1>
 
     <form th:action="@{/reservations/{reservationId}/confirm(reservationId=${reservationRoom.reservationId})}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
             <div class="lg:col-span-2 space-y-6">

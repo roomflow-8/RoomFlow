@@ -1,19 +1,15 @@
 package com.goorm.roomflow.domain.reservation.service;
 
 import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
-import com.goorm.roomflow.domain.reservation.dto.request.*;
-import com.goorm.roomflow.domain.reservation.dto.response.EquipmentItem;
-import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.equipment.entity.Equipment;
 import com.goorm.roomflow.domain.equipment.entity.EquipmentStatus;
 import com.goorm.roomflow.domain.equipment.repository.EquipmentRepository;
+import com.goorm.roomflow.domain.reservation.dto.request.*;
+import com.goorm.roomflow.domain.reservation.dto.response.EquipmentItem;
+import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationTimeSlot;
-import com.goorm.roomflow.domain.reservation.entity.Reservation;
-import com.goorm.roomflow.domain.reservation.entity.ReservationEquipment;
-import com.goorm.roomflow.domain.reservation.entity.ReservationRoom;
-import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
-import com.goorm.roomflow.domain.reservation.entity.TargetType;
+import com.goorm.roomflow.domain.reservation.entity.*;
 import com.goorm.roomflow.domain.reservation.event.ReservationStatusChangedEvent;
 import com.goorm.roomflow.domain.reservation.mapper.ReservationRoomMapper;
 import com.goorm.roomflow.domain.reservation.repository.ReservationEquipmentRepository;
@@ -30,13 +26,11 @@ import com.goorm.roomflow.domain.user.repository.UserJpaRepository;
 import com.goorm.roomflow.domain.user.service.CustomUser;
 import com.goorm.roomflow.global.code.ErrorCode;
 import com.goorm.roomflow.global.exception.BusinessException;
-import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -44,9 +38,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -63,9 +54,6 @@ public class ReservationServiceImpl implements ReservationService {
 	private final EquipmentRepository equipmentRepository;
 	private final UserJpaRepository userRepository;
 	private final ApplicationEventPublisher eventPublisher;
-	@Resource(name = "equipmentReservationExecutor")
-	private ExecutorService equipmentExecutor;
-	private final TransactionTemplate transactionTemplate;
 
 	@Override
 	public Reservation getReservation(Long userId, Long reservationId) {
@@ -296,21 +284,26 @@ public class ReservationServiceImpl implements ReservationService {
 		);
 
 	}
-
 	/**
 	 * 비품 예약 추가
 	 * 예약 상태를 PENDING으로 변경
 	 */
 	@Override
 	@Transactional
-	public EquipmentReservationRes addEquipmentsToReservation(
-			Long userId,
-			Long reservationId,
-			AddEquipmentsReq request) {
+	public EquipmentReservationRes addEquipmentsToReservation(Long userId,
+															  Long reservationId,
+															  AddEquipmentsReq request) {
+
 
 		// 1. 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+
+		log.info("reservation", reservation.getReservationId());
+
+		if (!reservation.getUser().getUserId().equals(userId)) {
+			throw new BusinessException(ErrorCode.UNAUTHORIZED);
+		}
 
 		// 2. 취소/만료된 예약 체크
 		if (reservation.getStatus() == ReservationStatus.CANCELLED
@@ -319,18 +312,12 @@ public class ReservationServiceImpl implements ReservationService {
 		}
 
 		// 3. 예약 시간 정보 가져오기
-		List<ReservationRoom> reservationRooms = reservationRoomRepository
-				.findByReservation(reservation);
-
-		if (reservationRooms.isEmpty()) {
-			throw new BusinessException(ErrorCode.RESERVATION_NOT_FOUND);
-		}
-
-		List<RoomSlot> roomSlots = reservationRooms.stream()
+		List<RoomSlot> roomSlots = reservationRoomRepository.findByReservation(reservation)
+				.stream()
 				.map(ReservationRoom::getRoomSlot)
 				.toList();
 
-
+		// 4. 비품 예약 처리
 		List<ReservationEquipment> savedEquipments =
 				createEquipmentReservations(reservation, roomSlots, request.equipments());
 
@@ -338,7 +325,6 @@ public class ReservationServiceImpl implements ReservationService {
 
 	}
 
-	//
 	private List<ReservationEquipment> createEquipmentReservations(Reservation reservation,
 																   List<RoomSlot> roomSlots,
 																   List<EquipmentReservationReq> equipmentRequests) {
@@ -354,78 +340,76 @@ public class ReservationServiceImpl implements ReservationService {
 				.max(LocalDateTime::compareTo)
 				.orElseThrow();
 
-		// ⏱️ 시간 측정 시작
+		// 2. ID 순서로 재정렬
+		List<EquipmentReservationReq> sortedRequests = equipmentRequests.stream()
+				.sorted(Comparator.comparing(EquipmentReservationReq::equipmentId))
+				.toList();
+
+		// 시간 측정 시작
 		long startTimeMillis = System.currentTimeMillis();
-		log.info("⏱️ 비품 예약 시작 - count: {}", equipmentRequests.size());
+		log.info("비품 예약 시작 - count: {}", sortedRequests.size());
+
+		List<ReservationEquipment> reservationEquipments = new ArrayList<>();
+
+		for ( EquipmentReservationReq equipmentReq : sortedRequests) {
+
+			Equipment equipment = equipmentRepository.findById(equipmentReq.equipmentId())
+					.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
+
+			// 3. 비품 상태 확인
+			if (equipment.getStatus() != EquipmentStatus.AVAILABLE) {
+				throw new BusinessException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
+			}
+
+			// 4. 재고 검증
+			validateAvailableStock(
+					reservation.getReservationId(),
+					equipment,
+					equipmentReq.quantity(),
+					startTime,
+					endTime
+			);
+
+			// 5. 단가와 총액 계산
+			BigDecimal unitPrice = equipmentReq.unitPrice() != null
+					? equipmentReq.unitPrice()
+					: equipment.getPrice();
+
+			BigDecimal totalAmount = unitPrice
+					.multiply(BigDecimal.valueOf(equipmentReq.quantity()));
+
+			// 6. ReservationEquipment 생성
+			ReservationEquipment reservationEquipment = ReservationEquipment.builder()
+					.reservation(reservation)
+					.equipment(equipment)
+					.quantity(equipmentReq.quantity())
+					.status(ReservationStatus.PENDING)
+					.unitPrice(unitPrice)
+					.totalAmount(totalAmount)
+					.build();
 
 
-		// 2. 병렬로 비품 처리
-		List<CompletableFuture<ReservationEquipment>> futures = equipmentRequests.stream()
-				.map(equipmentReq -> CompletableFuture.supplyAsync(() ->
-						transactionTemplate.execute(status -> {
-							Equipment equipment = equipmentRepository.findByEquipmentIdForUpdate(equipmentReq.equipmentId())
-									.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
-
-							// 3. 비품 상태 확인
-							if (equipment.getStatus() != EquipmentStatus.AVAILABLE) {
-								throw new BusinessException(ErrorCode.EQUIPMENT_NOT_AVAILABLE);
-							}
-
-							// 4. 재고 검증
-							validateAvailableStock(
-									reservation.getReservationId(),
-									equipment.getEquipmentId(),
-									equipmentReq.quantity(),
-									startTime,
-									endTime
-							);
-
-							// 5. 단가와 총액 계산
-							BigDecimal unitPrice = equipmentReq.unitPrice() != null
-									? equipmentReq.unitPrice()
-									: equipment.getPrice();
-
-							BigDecimal totalAmount = unitPrice
-									.multiply(BigDecimal.valueOf(equipmentReq.quantity()));
-
-							// 6. ReservationEquipment 생성
-							ReservationEquipment reservationEquipment = ReservationEquipment.builder()
-									.reservation(reservation)
-									.equipment(equipment)
-									.quantity(equipmentReq.quantity())
-									.status(ReservationStatus.PENDING)
-									.unitPrice(unitPrice)
-									.totalAmount(totalAmount)
-									.build();
+			//7. 즉시 저장
+			ReservationEquipment saved = reservationEquipmentRepository.saveAndFlush(reservationEquipment);
+			reservationEquipments.add(saved);
 
 
-							log.debug("비품 예약 생성 - equipment: {}, quantity: {}, amount: {}",
-									equipment.getEquipmentName(), equipmentReq.quantity(), totalAmount);
+			log.debug("비품 예약 생성 - equipment: {}, quantity: {}, amount: {}",
+					equipment.getEquipmentName(), equipmentReq.quantity(), totalAmount);
 
-							return reservationEquipment;
-						}), equipmentExecutor))
-				.collect(Collectors.toList());
+		}
 
 		// ⏱️ 시간 측정 종료
 		long endTimeMillis = System.currentTimeMillis();
-		long duration = endTimeMillis - startTimeMillis;
+		log.debug("⏱️ 비품 예약 완료 - count: {}, 처리시간: {}ms",
+				equipmentRequests.size(), endTimeMillis - startTimeMillis);
 
-		log.info("⏱️ 비품 예약 완료 - count: {}, 처리시간: {}ms",
-				equipmentRequests.size(), duration);
-
-
-		// 3. 모든 병렬 작업 완료 대기
-		List<ReservationEquipment> reservationEquipments = futures.stream()
-				.map(CompletableFuture::join)
-				.collect(Collectors.toList());
-
-
-		// 7. 저장
-		List<ReservationEquipment> saved = reservationEquipmentRepository.saveAll(reservationEquipments);
 
 		// 8. Reservation 총액 업데이트
 		updateReservationTotalAmount(reservation);
-		saved.forEach(re ->
+
+		// 9. 상태 변경 이벤트 발행
+		reservationEquipments.forEach(re ->
 				publishEquipmentsReservationStatusChangedEvent(
 						reservation,
 						re.getReservationEquipmentId(),
@@ -436,9 +420,9 @@ public class ReservationServiceImpl implements ReservationService {
 				)
 		);
 
-		log.info("비품 예약 추가 완료 - count: {}", saved.size());
+		log.info("비품 예약 추가 완료 - count: {}", reservationEquipments.size());
 
-		return saved;
+		return reservationEquipments;
 	}
 
 
@@ -538,6 +522,9 @@ public class ReservationServiceImpl implements ReservationService {
 		log.info("비품 예약 확정 시작 - reservationId: {}, equipmentIds: {}",
 				reservationId, reservationEquipmentIds);
 
+		Reservation reservation = reservationRepository.findById(reservationId)
+				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+
 		// 비품 예약 조회
 		List<ReservationEquipment> reservationEquipments =
 				reservationEquipmentRepository.findAllById(reservationEquipmentIds);
@@ -549,6 +536,7 @@ public class ReservationServiceImpl implements ReservationService {
 
 		List<ReservationStatusChangedEvent> events = new ArrayList<>();
 
+
 		for (ReservationEquipment reservationEquipment : reservationEquipments) {
 
 			//  예약 ID 일치 확인 (전달받은 reservationId와 reservationEquipment의 reservationId의 일치여부 확인)
@@ -557,7 +545,8 @@ public class ReservationServiceImpl implements ReservationService {
 			}
 
 			// 이미 취소된 비품 예약인지 확인
-			if (reservationEquipment.getStatus() == ReservationStatus.CANCELLED) {
+			if (reservationEquipment.getStatus() == ReservationStatus.CANCELLED
+					|| reservationEquipment.getStatus() == ReservationStatus.EXPIRED) {
 				throw new BusinessException(ErrorCode.RESERVATION_EQUIPMENT_CANCELLED);
 			}
 
@@ -566,33 +555,6 @@ public class ReservationServiceImpl implements ReservationService {
 				log.debug("이미 확정된 비품 예약 - id: {}", reservationEquipment.getReservationEquipmentId());
 				continue;
 			}
-
-			// 재고 재검증 (확정 시점에 다시 확인)**
-			Reservation reservation = reservationEquipment.getReservation(); //이벤트 발행에서 사용
-			List<ReservationRoom> reservationRooms =
-					reservationRoomRepository.findByReservation(reservation);
-
-			List<RoomSlot> roomSlots = reservationRooms.stream()
-					.map(ReservationRoom::getRoomSlot)
-					.toList();
-
-			LocalDateTime startTime = roomSlots.stream()
-					.map(RoomSlot::getSlotStartAt)
-					.min(LocalDateTime::compareTo)
-					.orElseThrow();
-
-			LocalDateTime endTime = roomSlots.stream()
-					.map(RoomSlot::getSlotEndAt)
-					.max(LocalDateTime::compareTo)
-					.orElseThrow();
-
-			validateAvailableStock(
-					reservationId,
-					reservationEquipment.getEquipment().getEquipmentId(),
-					reservationEquipment.getQuantity(),
-					startTime,
-					endTime
-			);
 
 			//  현재 상태 저장 (fromStatus)
 			ReservationStatus fromStatus = reservationEquipment.getStatus();
@@ -622,8 +584,6 @@ public class ReservationServiceImpl implements ReservationService {
 		}
 
 		// 총액 업데이트
-		Reservation reservation = reservationRepository.findById(reservationId)
-				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 		updateReservationTotalAmount(reservation);
 
 		events.forEach(eventPublisher::publishEvent);
@@ -711,10 +671,6 @@ public class ReservationServiceImpl implements ReservationService {
 	@Transactional
 	public void cancelReservationEquipments(Long userId, Long reservationId, CancelReservationEquipmentsReq request) {
 		try {
-			/*//예약 조회
-			Reservation reservation = getReservation(reservationId);
-			log.debug("reservationServiceImpl - 예약 조회 완료 - status: {}", reservation.getStatus());
-*/
 
 			// 1. 예약 조회
 			Reservation reservation = reservationRepository.findById(reservationId)
@@ -844,14 +800,6 @@ public class ReservationServiceImpl implements ReservationService {
 	public List<EquipmentAvailabilityDto> getAvailableEquipments(Long userId, Long reservationId) {
 		log.debug("사용 가능한 재고 조회 - reservationId: {}", reservationId);
 
-/*
-
-		// 예약 존재 여부 확인
-		if (!reservationRepository.existsById(reservationId)) {
-			throw new BusinessException(ErrorCode.RESERVATION_NOT_FOUND);
-		}
-*/
-
 		// 1. 예약 조회
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
@@ -870,16 +818,14 @@ public class ReservationServiceImpl implements ReservationService {
 	 */
 	private void validateAvailableStock(
 			Long reservationId,
-			Long equipmentId,
+			Equipment equipment,
 			int requestedQuantity,
 			LocalDateTime startTime,
 			LocalDateTime endTime) {
 
-		Equipment equipment = equipmentRepository.findById(equipmentId)
-				.orElseThrow(() -> new BusinessException(ErrorCode.EQUIPMENT_NOT_FOUND));
+		List<Integer> quantities = reservationEquipmentRepository.findReservedQuantities(reservationId, equipment.getEquipmentId(), startTime, endTime );
 
-		int reservedQuantity = reservationEquipmentRepository
-				.calculateReservedQuantity(reservationId, equipmentId, startTime, endTime);
+		int reservedQuantity = quantities.stream().mapToInt(Integer::intValue).sum();
 
 		int availableQuantity = equipment.getTotalStock() - reservedQuantity;
 

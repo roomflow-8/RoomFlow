@@ -1,8 +1,5 @@
 package com.goorm.roomflow.domain.room.dto.response;
 
-import com.goorm.roomflow.domain.room.entity.MeetingRoom;
-import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 
 public record RoomSlotRes(

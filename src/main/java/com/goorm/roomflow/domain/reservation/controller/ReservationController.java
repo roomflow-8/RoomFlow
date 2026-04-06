@@ -6,7 +6,6 @@ import com.goorm.roomflow.domain.reservation.dto.request.*;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.entity.Reservation;
-import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
 import com.goorm.roomflow.domain.reservation.service.ReservationLockFacade;
 import com.goorm.roomflow.domain.reservation.service.ReservationService;
 import com.goorm.roomflow.domain.user.service.CustomUser;
@@ -29,8 +28,6 @@ public class ReservationController {
 
 	private final ReservationService reservationService;
 	private final ReservationLockFacade reservationLockFacade;
-	private final EquipmentService equipmentService;
-
 
 	/**
 	 * 회의실 예약 생성 처리
@@ -103,7 +100,7 @@ public class ReservationController {
 			model.addAttribute("equipments", equipments);
 			return "equipment/list";
 
-		}  catch (Exception e) {
+		} catch (Exception e) {
 			log.error("비품 목록 조회 실패: {}", e.getMessage(), e);
 			model.addAttribute("errorMessage", e.getMessage());
 			return "5xx";
@@ -112,12 +109,6 @@ public class ReservationController {
 	}
 
 
-	/*
-	 비품 추가 페이지에서 비품 신청 완료 버튼 클릭시
-	 (회의실) 예약 상태가
-	 - Confirmed일 때 마이페이지로 이동
-	 - Pending일 때 예약확인 페이지(/reservations/rooms/{reservationId})로 이동
-	 */
 	@PostMapping("/{reservationId}/equipments")
 	public String createEquipmentReservation(
 			@AuthenticationPrincipal CustomUser currentUser,
@@ -140,7 +131,7 @@ public class ReservationController {
 
 			// Service 호출 - 비품 추가 pending상태로 예약
 			EquipmentReservationRes response =
-					reservationService.addEquipmentsToReservation(currentUser.getUserId(), reservationId, request);
+					reservationLockFacade.addEquipmentsToReservation(currentUser.getUserId(), reservationId, request);
 
 			log.info("비품 추가 완료 - {} 종류", response.equipments().size());
 
