@@ -27,16 +27,16 @@ public class SocialAccountService {
     private final SocialAccountRepository socialAccountRepository;
     private final RestClient restClient;
 
-    @Value("${spring.security.oauth2.client.registration.naver.client-id}")
+    @Value("${spring.security.oauth2.client.registration.naver.client-id:}")
     private String naverClientId;
 
-    @Value("${spring.security.oauth2.client.registration.naver.client-secret}")
+    @Value("${spring.security.oauth2.client.registration.naver.client-secret:}")
     private String naverClientSecret;
 
-    @Value("${spring.security.oauth2.client.registration.kakao.client-id}")
+    @Value("${spring.security.oauth2.client.registration.kakao.client-id:}")
     private String kakaoClientId;
 
-    @Value("${spring.security.oauth2.client.registration.kakao.client-secret}")
+    @Value("${spring.security.oauth2.client.registration.kakao.client-secret:}")
     private String kakaoClientSecret;
 
     @Transactional

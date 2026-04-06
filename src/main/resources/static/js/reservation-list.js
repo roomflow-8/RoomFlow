@@ -44,6 +44,7 @@ function closeCancelModal() {
 
 function submitCancelForm() {
     const reason = document.getElementById('cancelReasonTextarea').value.trim();
+
     if (!reason) {
         alert('비품 취소 사유를 입력해주세요.');
         return;
