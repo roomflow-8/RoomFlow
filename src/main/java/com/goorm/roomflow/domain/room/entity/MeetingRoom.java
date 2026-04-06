@@ -43,17 +43,6 @@ public class MeetingRoom extends BaseEntity {
 	public MeetingRoom(String roomName, int capacity, String description,
 					   BigDecimal hourlyPrice, RoomStatus status, String imageUrl) {
 
-		this.roomName = roomName;
-		this.capacity = capacity;
-		this.description = description;
-		this.hourlyPrice = (hourlyPrice != null) ? hourlyPrice : BigDecimal.ZERO;
-		this.status = (status != null) ? status : RoomStatus.AVAILABLE;
-		this.imageUrl = imageUrl;
-		this.totalReservations = 0;
-	}
-
-	// 회의실 정보 수정
-	public void updateRoomInfo(String roomName, int capacity, String description) {
 		validateRoomName(roomName);
 		validateCapacity(capacity);
 		validateHourlyPrice(hourlyPrice);
@@ -61,6 +50,26 @@ public class MeetingRoom extends BaseEntity {
 		this.roomName = roomName;
 		this.capacity = capacity;
 		this.description = description;
+		this.hourlyPrice = hourlyPrice;
+		updateStatus(status);
+		this.imageUrl = imageUrl;
+		this.totalReservations = 0;
+	}
+
+	// 회의실 정보 수정
+	public void updateRoomInfo(String roomName, int capacity, String description,
+							   BigDecimal hourlyPrice, RoomStatus status, String imageUrl) {
+
+		validateRoomName(roomName);
+		validateCapacity(capacity);
+		validateHourlyPrice(hourlyPrice);
+
+		this.roomName = roomName;
+		this.capacity = capacity;
+		this.description = description;
+		this.hourlyPrice = (hourlyPrice != null) ? hourlyPrice : BigDecimal.ZERO;
+		updateStatus(status);
+		this.imageUrl = imageUrl;
 	}
 
 	public void updateStatus(RoomStatus status) {
