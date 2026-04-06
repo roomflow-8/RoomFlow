@@ -2,7 +2,9 @@ package com.goorm.roomflow.domain.reservation.repository;
 
 import com.goorm.roomflow.domain.reservation.entity.ReservationEquipment;
 import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
-import org.springframework.data.jpa.repository.*;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
@@ -10,26 +12,23 @@ import java.util.List;
 
 public interface ReservationEquipmentRepository extends JpaRepository<ReservationEquipment, Long> {
 
-
 	/**
-	 * 특정 시간대에 예약된 비품 수량 계산 (CANCELLED, EXPIRED 제외)
-	 * - Service Layer에서 재고 검증 시 사용
+	 * 특정 시간대에 예약된 비품 수량 목록 조회
 	 */
 	@Query("""
-			    SELECT COALESCE(SUM(re.quantity), 0)
-			    FROM ReservationEquipment re
-			    JOIN re.reservation r
-			    JOIN ReservationRoom rr ON rr.reservation = r
-			    JOIN rr.roomSlot rs
-			    WHERE re.equipment.equipmentId = :equipmentId
-			    AND rs.slotStartAt < :endTime
-			    AND rs.slotEndAt > :startTime
-				AND r.status NOT IN ('CANCELLED', 'EXPIRED')
-				AND (re.status = 'CONFIRMED'
-			           			OR (re.status = 'PENDING' AND r.reservationId != :reservationId)
-			    )
-			""")
-	int calculateReservedQuantity(
+        SELECT re.quantity
+        FROM ReservationEquipment re
+        JOIN re.reservation r
+        JOIN ReservationRoom rr ON rr.reservation = r
+        JOIN rr.roomSlot rs
+        WHERE re.equipment.equipmentId = :equipmentId
+        AND rs.slotStartAt < :endTime
+        AND rs.slotEndAt > :startTime
+        AND r.status NOT IN ('CANCELLED', 'EXPIRED')
+        AND (re.status = 'CONFIRMED'
+             OR (re.status = 'PENDING' AND r.reservationId != :reservationId))
+        """)
+	List<Integer> findReservedQuantities(
 			@Param("reservationId") Long reservationId,
 			@Param("equipmentId") Long equipmentId,
 			@Param("startTime") LocalDateTime startTime,
@@ -92,4 +91,7 @@ public interface ReservationEquipmentRepository extends JpaRepository<Reservatio
 			@Param("status") ReservationStatus status,
 			@Param("threshold") LocalDateTime threshold
 	);
+
+
+
 }

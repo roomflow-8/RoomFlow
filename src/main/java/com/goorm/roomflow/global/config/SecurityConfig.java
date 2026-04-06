@@ -12,8 +12,6 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
@@ -32,51 +30,6 @@ public class SecurityConfig {
 	private final OAuth2SuccessHandler oAuth2SuccessHandler;
 	private final FormLoginSuccessHandler formLoginSuccessHandler;
 	private final FormLoginFailureHandler formLoginFailureHandler;
-/*
-
-	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-		httpSecurity
-			.csrf(csrf -> csrf.disable())
-			.sessionManagement(session -> session
-				.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-			)
-			.authorizeHttpRequests(auth -> auth
-				.requestMatchers(
-					"/", "/users/login", "/users/signup",
-					"/users/email/send", "/users/email/verify",
-					"/oauth2/**", "/login/oauth2/**",
-					"/swagger-ui/**", "/v3/api-docs/**",
-					"/css/**", "/js/**", "/images/**",
-					"/rooms/**","/api/**"
-				).permitAll()
-				.anyRequest().authenticated()
-			)
-			.formLogin(form -> form
-				.loginPage("/users/login")
-				.loginProcessingUrl("/users/login")
-				.usernameParameter("email")
-				.passwordParameter("password")
-					.successHandler(formLoginSuccessHandler)
-				.failureUrl("/users/login?error=true")
-			)
-			.logout(logout -> logout
-				.logoutUrl("/users/logout")
-				.logoutSuccessUrl("/users/login")
-				.invalidateHttpSession(true)
-				.deleteCookies("JSESSIONID")
-			)
-			.oauth2Login(oauth2 -> oauth2
-				.loginPage("/users/login")
-				.userInfoEndpoint(userInfo -> userInfo
-					.userService(customOAuth2UserService)
-				)
-				.successHandler(oAuth2SuccessHandler)
-			);
-
-		return httpSecurity.build();
-	}
-*/
 
 	/**
 	 * 1.제거
@@ -84,7 +37,7 @@ public class SecurityConfig {
 	 * <p>
 	 * 2. 추가
 	 * .requestMatchers(HttpMethod.GET, "/rooms/**").permitAll()
-	 * .requestMatchers("/reservations/**").authenticated()
+	 * .requestMatchers("/reservations/**", "/users/mypage/**", "/users/reservationlist").authenticated()
 	 * <p>
 	 * 3. you will gonna need it
 	 * .requestMatchers("/rooms/admin/**").hasRole("ADMIN") //admin 있을시 추가
@@ -106,10 +59,10 @@ public class SecurityConfig {
 								"/users/email/send", "/users/email/verify",
 								"/oauth2/**", "/login/oauth2/**",
 								"/swagger-ui/**", "/v3/api-docs/**",
-								"/css/**", "/js/**", "/images/**"
+								"/css/**", "/js/**", "/images/**", "/reservations/**", "/api/v1/**"
 						).permitAll()
 						.requestMatchers(HttpMethod.GET, "/rooms/**").permitAll()
-						.requestMatchers("/reservations/**", "/users/mypage/**", "/admin/**").authenticated()
+						.requestMatchers("/users/mypage/**", "/users/reservationlist").authenticated()
 						.anyRequest().authenticated()
 				)
 				.formLogin(form -> form

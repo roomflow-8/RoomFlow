@@ -5,10 +5,7 @@ import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRe
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
 import com.goorm.roomflow.domain.reservation.service.ReservationLockFacade;
 import com.goorm.roomflow.domain.reservation.service.ReservationService;
-import com.goorm.roomflow.domain.user.dto.UserTO;
-import com.goorm.roomflow.domain.user.entity.User;
 import com.goorm.roomflow.domain.user.service.CustomUser;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.goorm.roomflow.global.code.SuccessCode;
 import com.goorm.roomflow.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Reservation API", description = "회의실/비품 예약 API")
@@ -69,10 +67,15 @@ public class ReservationRestController {
             @PathVariable Long reservationId,
             @Valid @RequestBody AddEquipmentsReq request) {
 
+        //임시
+        Long userId = (currentUser != null) ? currentUser.getUserId() : 1L;
+
+        log.info("비품 예약 요청 - userId: {}, reservationId: {}", userId, reservationId);
+
         log.info("비품 예약 요청 - reservationId: {}, count: {}", reservationId, request.equipments().size());
         log.info("비품 예약 요청 ReservationRestController POST /api/v1/reservations/{}/equipments", reservationId);
 
-        EquipmentReservationRes result = reservationService.addEquipmentsToReservation( currentUser.getUserId(),  reservationId, request);
+        EquipmentReservationRes result = reservationLockFacade.addEquipmentsToReservation( userId,  reservationId, request);
 
         return ApiResponse.success(
                 SuccessCode.EQUIPMENT_ADDED,

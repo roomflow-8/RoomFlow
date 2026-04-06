@@ -269,7 +269,7 @@ public class UserService {
         LocalDateTime slotStartAt = mergedStarts.isEmpty() ? null : mergedStarts.get(0);
         LocalDateTime slotEndAt   = mergedEnds.isEmpty()   ? null : mergedEnds.get(mergedEnds.size() - 1);
 
-        // 전달받은 rawEquipments에서 취소된 비품 제외 후 DTO 변환
+        // 전달받은 rawEquipments에서 취소된 비품 제외 후 DTO 변환 //TODO: expired 조건 추가
         List<UserEquipmentItem> equipmentItems = rawEquipments.stream()
                 .filter(e -> e.getStatus() != ReservationStatus.CANCELLED)
                 .map(e -> new UserEquipmentItem(

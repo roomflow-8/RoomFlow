@@ -2,7 +2,6 @@ package com.goorm.roomflow.domain.user.controller;
 
 import com.goorm.roomflow.domain.user.dto.SignupRequestDTO;
 import com.goorm.roomflow.domain.user.dto.UserDto;
-import com.goorm.roomflow.domain.user.dto.UserTO;
 import com.goorm.roomflow.domain.user.service.CustomUser;
 import com.goorm.roomflow.domain.user.service.EmailService;
 import com.goorm.roomflow.domain.user.service.UserService;
@@ -12,8 +11,8 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -75,11 +74,14 @@ public class UserController {
 		if (currentUser == null) {
 			return "redirect:/users/login";
 		}
+		UserDto loginUser =
+				userService.getUserByEmail(currentUser.getEmail());
+
 		model.addAttribute("reservations", userService.getReservationsByUserId(currentUser.getUserId(), tab, startDate, endDate));
 		model.addAttribute("activeTab", tab);
 		model.addAttribute("startDate", startDate);
 		model.addAttribute("endDate", endDate);
-		model.addAttribute("loginUser", UserDto.from(currentUser));
+		model.addAttribute("loginUser", loginUser);
 		return "user/reservation-list";
 	}
 
@@ -126,11 +128,13 @@ public class UserController {
 
 	// 비밀번호 변경
 	@PostMapping("/mypage/password")
-	public String changePassword(@RequestParam String currentPassword,
-								 @RequestParam String newPassword,
-								 @RequestParam String newPasswordConfirm,
-								 @AuthenticationPrincipal CustomUser currentUser,
-								 RedirectAttributes redirectAttributes) {
+	public String changePassword(
+			@AuthenticationPrincipal CustomUser currentUser,
+			@RequestParam String currentPassword,
+			@RequestParam String newPassword,
+			@RequestParam String newPasswordConfirm,
+			RedirectAttributes redirectAttributes) {
+
 		if (currentUser == null) {
 			return "redirect:/users/login";
 		}
