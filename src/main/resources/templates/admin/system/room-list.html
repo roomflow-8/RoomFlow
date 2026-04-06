@@ -7,23 +7,26 @@
     <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body class="bg-gray-50">
 <div th:replace="~{fragments/header :: header}"></div>
+<th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
 
-<div class="flex w-full">
+<div class="flex w-full min-h-screen">
     <div th:replace="~{fragments/admin-sidebar :: adminSidebar('system')}"></div>
 
     <main class="flex-1 p-6">
         <div th:replace="~{admin/system/system-tabs :: systemTabs('rooms')}"></div>
 
         <div class="flex items-center justify-end mb-6">
-            <a th:href="@{/admin/system/rooms/new}"
-               class="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition">
+            <button type="button"
+                    onclick="openCreateModal()"
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition">
                 <i data-lucide="plus" class="w-4 h-4"></i>
                 회의실 등록
-            </a>
+            </button>
         </div>
 
         <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden">
@@ -45,16 +48,27 @@
                         <th class="px-5 py-3 text-left font-medium text-gray-600">시간당 요금</th>
                         <th class="px-5 py-3 text-left font-medium text-gray-600">상태</th>
                         <th class="px-5 py-3 text-left font-medium text-gray-600">총 예약 수</th>
+                        <th class="px-5 py-3 text-left font-medium text-gray-600">수정일</th>
                         <th class="px-5 py-3 text-right font-medium text-gray-600">관리</th>
                     </tr>
                     </thead>
 
                     <tbody>
-                    <tr th:each="room : ${rooms}" class="border-b border-gray-100 last:border-b-0">
-                        <!-- 이미지 -->
+                    <tr th:each="room : ${rooms}"
+                        class="border-b border-gray-100 last:border-b-0"
+                        th:attr="data-room-id=${room.roomId},
+                                 data-room-name=${room.roomName},
+                                 data-room-description=${room.description},
+                                 data-room-capacity=${room.capacity},
+                                 data-room-hourly-price=${room.hourlyPrice},
+                                 data-room-status=${room.status},
+                                 data-room-image-url=${room.imageUrl},
+                                 data-room-total-reservations=${room.totalReservations},
+                                 data-room-created-at=${#temporals.format(room.createdAt, 'yyyy-MM-dd HH:mm')},
+                                 data-room-updated-at=${#temporals.format(room.updatedAt, 'yyyy-MM-dd HH:mm')}">
+
                         <td class="px-5 py-4">
-                            <div th:if="${room.imageUrl != null and !#strings.isEmpty(room.imageUrl)}"
-                                 class="w-14 h-14">
+                            <div th:if="${room.imageUrl != null and !#strings.isEmpty(room.imageUrl)}" class="w-14 h-14">
                                 <img th:src="${room.imageUrl}"
                                      alt="회의실 이미지"
                                      class="w-14 h-14 rounded-lg object-cover border border-gray-200">
@@ -65,58 +79,64 @@
                             </div>
                         </td>
 
-                        <!-- 회의실명 -->
                         <td class="px-5 py-4 text-gray-900 font-medium" th:text="${room.roomName}"></td>
-
-                        <!-- 설명 -->
-                        <td class="px-5 py-4 text-gray-600" th:text="${room.description}"></td>
-
-                        <!-- 수용 인원 -->
+                        <td class="px-5 py-4 text-gray-600 max-w-xs">
+                            <div class="max-w-xs"
+                                 style="display:-webkit-box;
+                                    -webkit-box-orient:vertical;
+                                    -webkit-line-clamp:2;
+                                    overflow:hidden;
+                                    white-space:pre-line;"
+                                 th:title="${room.description}"
+                                 th:text="${room.description}">
+                            </div>
+                        </td>
                         <td class="px-5 py-4 text-gray-700" th:text="${room.capacity} + '명'"></td>
-
-                        <!-- 시간당 요금 -->
                         <td class="px-5 py-4 text-gray-700"
                             th:text="${#numbers.formatInteger(room.hourlyPrice, 3, 'COMMA')} + '원'"></td>
 
-                        <!-- 상태 -->
                         <td class="px-5 py-4">
-                            <span th:if="${room.status.name() == 'AVAILABLE'}"
-                                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                예약 가능
-                            </span>
-
-                            <span th:if="${room.status.name() == 'MAINTENANCE'}"
-                                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-                                점검 중
-                            </span>
-
-                            <span th:if="${room.status.name() == 'INACTIVE'}"
-                                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-700">
-                                비활성화
-                            </span>
+                            <form th:action="@{|/admin/rooms/${room.roomId}/change|}" method="post" class="flex items-center gap-2">
+                                <select name="status"
+                                        th:attr="data-original-status=${room.status.name()}"
+                                        onchange="markStatusChanged(this)"
+                                        class="status-select rounded-lg border border-gray-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-black/10">
+                                    <option value="AVAILABLE" th:selected="${room.status.name() == 'AVAILABLE'}">예약 가능</option>
+                                    <option value="MAINTENANCE" th:selected="${room.status.name() == 'MAINTENANCE'}">점검 중</option>
+                                    <option value="INACTIVE" th:selected="${room.status.name() == 'INACTIVE'}">비활성화</option>
+                                </select>
+                                <button type="submit"
+                                        class="px-3 py-2 border border-gray-300 rounded-lg text-xs hover:bg-gray-50 transition">
+                                    변경
+                                </button>
+                            </form>
                         </td>
 
-                        <!-- 총 예약 수 -->
                         <td class="px-5 py-4 text-gray-700" th:text="${room.totalReservations} + '건'"></td>
 
-                        <!-- 관리 -->
+                        <td class="px-5 py-4 text-sm"
+                            th:text="${#temporals.format(room.updatedAt, 'yyyy-MM-dd HH:mm')}">
+                        </td>
+
                         <td class="px-5 py-4">
                             <div class="flex items-center justify-end gap-2">
-                                <a th:href="@{|/admin/system/rooms/${room.roomId}|}"
-                                   class="px-3 py-2 border border-gray-300 rounded-lg text-xs hover:bg-gray-50 transition">
+                                <button type="button"
+                                        class="px-3 py-2 border border-gray-300 rounded-lg text-xs hover:bg-gray-50 transition"
+                                        onclick="openDetailModal(this)">
                                     상세
-                                </a>
+                                </button>
 
-                                <a th:href="@{|/admin/system/rooms/${room.roomId}/edit|}"
-                                   class="px-3 py-2 border border-gray-300 rounded-lg text-xs hover:bg-gray-50 transition">
+                                <button type="button"
+                                        class="px-3 py-2 border border-gray-300 rounded-lg text-xs hover:bg-gray-50 transition"
+                                        onclick="openEditModal(this)">
                                     수정
-                                </a>
+                                </button>
                             </div>
                         </td>
                     </tr>
 
                     <tr th:if="${rooms == null or #lists.isEmpty(rooms)}">
-                        <td colspan="8" class="px-5 py-12 text-center text-sm text-gray-400">
+                        <td colspan="9" class="px-5 py-12 text-center text-sm text-gray-400">
                             등록된 회의실이 없습니다.
                         </td>
                     </tr>
@@ -127,8 +147,391 @@
     </main>
 </div>
 
-<script>
-    lucide.createIcons();
+<!-- 생성 모달 -->
+<div id="createModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">회의실 등록</h3>
+            <button type="button" onclick="closeModal('createModal')" class="text-gray-400 hover:text-gray-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <form th:action="@{/admin/rooms/create}" method="post" th:object="${createForm}" enctype="multipart/form-data" class="p-6 space-y-5">
+            <div th:if="${createErrorMessage != null}"
+                 class="px-4 py-3 rounded-lg bg-red-50 text-red-600 text-sm"
+                 th:text="${createErrorMessage}">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">회의실명</label>
+                    <input type="text" name="roomName"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">수용 인원</label>
+                    <input type="number" name="capacity"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">시간당 요금</label>
+                    <input type="number" name="hourlyPrice" step="1000" min="0"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">상태</label>
+                    <select name="status"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-black/10">
+                        <option value="AVAILABLE">예약 가능</option>
+                        <option value="MAINTENANCE">점검 중</option>
+                        <option value="INACTIVE">비활성화</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">회의실 이미지</label>
+                <input type="file" name="imageFile" accept="image/*"
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-black/10">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">설명</label>
+                <textarea name="description" rows="4"
+                          class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10"></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button"
+                        onclick="closeModal('createModal')"
+                        class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 transition">
+                    취소
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 rounded-lg bg-black text-white text-sm hover:bg-gray-800 transition">
+                    등록
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 상세 모달 -->
+<div id="detailModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">회의실 상세</h3>
+            <button type="button" onclick="closeModal('detailModal')" class="text-gray-400 hover:text-gray-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <div class="p-6 space-y-5">
+            <div class="w-full h-56 rounded-xl border border-gray-200 bg-gray-100 overflow-hidden flex items-center justify-center">
+                <img id="detailImage" src="" alt="회의실 이미지" class="w-full h-full object-cover hidden">
+                <div id="detailImageEmpty" class="text-gray-400 flex flex-col items-center gap-2">
+                    <i data-lucide="image-off" class="w-8 h-8"></i>
+                    <span class="text-sm">등록된 이미지가 없습니다.</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">회의실명</p>
+                    <p id="detailRoomName" class="text-base font-semibold text-gray-900"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">상태</p>
+                    <p id="detailStatus" class="text-base text-gray-900"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">수용 인원</p>
+                    <p id="detailCapacity" class="text-base text-gray-900"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">시간당 요금</p>
+                    <p id="detailHourlyPrice" class="text-base text-gray-900"></p>
+                </div>
+                <div class="md:col-span-2">
+                    <p class="text-sm text-gray-500 mb-1">설명</p>
+                    <p id="detailDescription" class="text-base text-gray-900 whitespace-pre-line"></p>
+                </div>
+                <div class="md:col-span-2">
+                    <p class="text-sm text-gray-500 mb-1">총 예약 수</p>
+                    <p id="detailTotalReservations" class="text-base text-gray-900"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">생성일</p>
+                    <p id="detailCreatedAt" class="text-base text-gray-900"></p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">수정일</p>
+                    <p id="detailUpdatedAt" class="text-base text-gray-900"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 수정 모달 -->
+<div id="editModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white w-full max-w-2xl rounded-2xl shadow-xl overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-900">회의실 수정</h3>
+            <button type="button" onclick="closeModal('editModal')" class="text-gray-400 hover:text-gray-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <form id="editForm" method="post" th:object="${modifyForm}" enctype="multipart/form-data" class="p-6 space-y-5">
+            <input type="hidden"
+                   th:name="${_csrf.parameterName}"
+                   th:value="${_csrf.token}">
+
+            <div th:if="${modifyErrorMessage != null}"
+                 class="px-4 py-3 rounded-lg bg-red-50 text-red-600 text-sm"
+                 th:text="${modifyErrorMessage}">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">회의실명</label>
+                    <input type="text" id="editRoomName" name="roomName"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">수용 인원</label>
+                    <input type="number" id="editCapacity" name="capacity"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">시간당 요금</label>
+                    <input type="number" id="editHourlyPrice" name="hourlyPrice" step="1000" min="0"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">상태</label>
+                    <select id="editStatus" name="status"
+                            class="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-black/10">
+                        <option value="AVAILABLE">예약 가능</option>
+                        <option value="MAINTENANCE">점검 중</option>
+                        <option value="INACTIVE">비활성화</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">현재 이미지</label>
+
+                <div class="w-40 h-28 rounded-lg border border-gray-200 bg-gray-100 overflow-hidden flex items-center justify-center">
+                    <img id="editImagePreview"
+                         src=""
+                         alt="현재 회의실 이미지"
+                         class="w-full h-full object-cover hidden">
+
+                    <div id="editImageEmpty" class="text-gray-400 flex flex-col items-center gap-1">
+                        <i data-lucide="image-off" class="w-5 h-5"></i>
+                        <span class="text-xs">등록된 이미지 없음</span>
+                    </div>
+                </div>
+
+                <div class="mt-5">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">새 이미지 업로드</label>
+                    <input type="file"
+                           id="editImageFile"
+                           name="imageFile"
+                           accept="image/*"
+                           class="w-full rounded-lg border border-gray-300 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-black/10">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">설명</label>
+                <textarea id="editDescription" name="description" rows="4"
+                          class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black/10"></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button"
+                        onclick="closeModal('editModal')"
+                        class="px-4 py-2 rounded-lg border border-gray-300 text-sm hover:bg-gray-50 transition">
+                    취소
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 rounded-lg bg-black text-white text-sm hover:bg-gray-800 transition">
+                    수정
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    function formatPrice(value) {
+        if (value == null || value === '') return '-';
+        return Number(value).toLocaleString() + '원';
+    }
+
+    function markStatusChanged(select) {
+        const originalStatus = select.dataset.originalStatus;
+        const form = select.closest('form');
+
+        const changed = select.value !== originalStatus;
+
+        if (changed) {
+            select.classList.remove('border-gray-300', 'bg-white');
+            select.classList.add('border-blue-400', 'bg-blue-50');
+        } else {
+            select.classList.remove('border-blue-400', 'bg-blue-50');
+            select.classList.add('border-gray-300', 'bg-white');
+        }
+    }
+
+    function getStatusLabel(status) {
+        switch (status) {
+            case 'AVAILABLE': return '예약 가능';
+            case 'MAINTENANCE': return '점검 중';
+            case 'INACTIVE': return '비활성화';
+            default: return status ?? '-';
+        }
+    }
+
+    function openModal(id) {
+        const modal = document.getElementById(id);
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeModal(id) {
+        const modal = document.getElementById(id);
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function getRoomData(button) {
+        const row = button.closest('tr');
+        return {
+            roomId: row.dataset.roomId,
+            roomName: row.dataset.roomName || '',
+            description: row.dataset.roomDescription || '',
+            capacity: row.dataset.roomCapacity || '',
+            hourlyPrice: row.dataset.roomHourlyPrice || '',
+            status: row.dataset.roomStatus || '',
+            imageUrl: row.dataset.roomImageUrl || '',
+            totalReservations: row.dataset.roomTotalReservations || '0',
+            createdAt: row.dataset.roomCreatedAt || '-',
+            updatedAt: row.dataset.roomUpdatedAt || '-'
+        };
+    }
+
+    function openCreateModal() {
+        openModal('createModal');
+    }
+
+    function openDetailModal(button) {
+        const room = getRoomData(button);
+
+        document.getElementById('detailRoomName').textContent = room.roomName;
+        document.getElementById('detailStatus').textContent = getStatusLabel(room.status);
+        document.getElementById('detailCapacity').textContent = room.capacity ? room.capacity + '명' : '-';
+        document.getElementById('detailHourlyPrice').textContent = formatPrice(room.hourlyPrice);
+        document.getElementById('detailDescription').textContent = room.description || '-';
+        document.getElementById('detailTotalReservations').textContent = room.totalReservations + '건';
+        document.getElementById('detailCreatedAt').textContent = room.createdAt;
+        document.getElementById('detailUpdatedAt').textContent = room.updatedAt;
+
+        const image = document.getElementById('detailImage');
+        const empty = document.getElementById('detailImageEmpty');
+
+        if (room.imageUrl && room.imageUrl.trim() !== '') {
+            image.src = room.imageUrl;
+            image.classList.remove('hidden');
+            empty.classList.add('hidden');
+        } else {
+            image.src = '';
+            image.classList.add('hidden');
+            empty.classList.remove('hidden');
+        }
+
+        openModal('detailModal');
+    }
+
+    function openEditModal(button) {
+        const room = getRoomData(button);
+
+        document.getElementById('editForm').action = '/admin/rooms/' + room.roomId + '/edit';
+        document.getElementById('editRoomName').value = room.roomName;
+        document.getElementById('editDescription').value = room.description;
+        document.getElementById('editCapacity').value = room.capacity;
+        document.getElementById('editHourlyPrice').value = room.hourlyPrice;
+        document.getElementById('editStatus').value = room.status;
+
+        const preview = document.getElementById('editImagePreview');
+        const empty = document.getElementById('editImageEmpty');
+        const fileInput = document.getElementById('editImageFile');
+
+        fileInput.value = '';
+
+        if (room.imageUrl && room.imageUrl.trim() !== '') {
+            preview.src = room.imageUrl;
+            preview.classList.remove('hidden');
+            empty.classList.add('hidden');
+        } else {
+            preview.src = '';
+            preview.classList.add('hidden');
+            empty.classList.remove('hidden');
+        }
+
+        openModal('editModal');
+    }
+
+    document.addEventListener('click', function (e) {
+        ['detailModal'].forEach(function (id) {
+            const modal = document.getElementById(id);
+            if (e.target === modal) {
+                closeModal(id);
+            }
+        });
+    });
+
+    window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            ['createModal', 'detailModal', 'editModal'].forEach(closeModal);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        lucide.createIcons();
+
+        const openCreateModalFlag = /*[[${openCreateModal}]]*/ false;
+        const openModifyModalFlag = /*[[${openModifyModal}]]*/ false;
+        const modifyTargetId = /*[[${modifyTargetId}]]*/ null;
+
+        if (openCreateModalFlag) {
+            openCreateModal();
+        }
+
+        if (openModifyModalFlag && modifyTargetId != null) {
+            const targetRow = document.querySelector(`tr[data-room-id="${modifyTargetId}"]`);
+            if (targetRow) {
+                const editButton = targetRow.querySelector('button[onclick="openEditModal(this)"]');
+                if (editButton) {
+                    openEditModal(editButton);
+                }
+            }
+        }
+    });
 </script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 package com.goorm.roomflow.domain.room.scheduler;
 
 import com.goorm.roomflow.domain.room.service.MeetingRoomService;
+import com.goorm.roomflow.domain.room.service.RoomSlotService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -13,13 +14,13 @@ import java.time.LocalDate;
 @RequiredArgsConstructor
 public class RoomSlotScheduler {
 
-    private final MeetingRoomService meetingRoomService;
+    private final RoomSlotService roomSlotService;
 
     @Scheduled(cron = "0 50 23 * * *", zone = "Asia/Seoul")
     public void generateOneMonthLaterSlot() {
         LocalDate targetDate = LocalDate.now().plusMonths(1);
 
         log.info("[RoomSlotScheduler] 슬롯 생성 스케줄 시작 - targetDate={}", targetDate);
-        meetingRoomService.generateSlots(targetDate);
+        roomSlotService.generateDailySlotsForActiveRooms(targetDate);
     }
 }

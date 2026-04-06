@@ -2,7 +2,9 @@ package com.goorm.roomflow.domain.room.controller;
 
 import com.goorm.roomflow.domain.room.dto.request.CreateRoomSlotsReq;
 import com.goorm.roomflow.domain.room.dto.response.MeetingRoomListRes;
+import com.goorm.roomflow.domain.room.repository.RoomSlotRepository;
 import com.goorm.roomflow.domain.room.service.MeetingRoomService;
+import com.goorm.roomflow.domain.room.service.RoomSlotService;
 import com.goorm.roomflow.global.code.SuccessCode;
 import com.goorm.roomflow.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,6 +22,7 @@ import java.time.LocalDate;
 public class MeetingRoomRestController {
 
     private final MeetingRoomService meetingRoomService;
+    private final RoomSlotService roomSlotService;
 
     @Operation(summary = "날짜별 회의실 목록 조회")
     @GetMapping("/rooms")
@@ -37,7 +40,7 @@ public class MeetingRoomRestController {
     @PostMapping("/rooms/slots")
     public ResponseEntity<ApiResponse<Void>> createRoomSlots(@RequestBody CreateRoomSlotsReq request) {
 
-        meetingRoomService.generateSlotsForRoom(request);
+        roomSlotService.generateDailySlotsForRooms(request.meetingRoomIds(), request.targetDate());
 
         return ApiResponse.success(
                 SuccessCode.ROOMSLOT_CREATED

@@ -2,8 +2,10 @@ package com.goorm.roomflow.domain.room.service;
 
 import com.goorm.roomflow.domain.reservation.entity.ReservationPolicy;
 import com.goorm.roomflow.domain.reservation.repository.ReservationPolicyRepository;
+import com.goorm.roomflow.domain.reservation.repository.ReservationRoomRepository;
 import com.goorm.roomflow.domain.room.dto.RoomSlotInsertDto;
 import com.goorm.roomflow.domain.room.dto.request.CreateRoomSlotsReq;
+import com.goorm.roomflow.domain.room.dto.request.MeetingRoomReq;
 import com.goorm.roomflow.domain.room.dto.response.*;
 import com.goorm.roomflow.domain.room.entity.MeetingRoom;
 import com.goorm.roomflow.domain.room.entity.RoomSlot;
@@ -13,6 +15,9 @@ import com.goorm.roomflow.domain.room.mapper.RoomSlotMapper;
 import com.goorm.roomflow.domain.room.repository.MeetingRoomRepository;
 import com.goorm.roomflow.domain.room.repository.RoomSlotBulkRepository;
 import com.goorm.roomflow.domain.room.repository.RoomSlotRepository;
+import com.goorm.roomflow.global.code.ErrorCode;
+import com.goorm.roomflow.global.exception.BusinessException;
+import com.goorm.roomflow.global.s3.S3ImageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.CannotAcquireLockException;
@@ -24,6 +29,7 @@ import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,8 +44,9 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
 
     private final MeetingRoomRepository meetingRoomRepository;
     private final RoomSlotRepository roomSlotRepository;
-    private final RoomSlotBulkRepository roomSlotBulkRepository;
-    private final ReservationPolicyRepository reservationPolicyRepository;
+    private final ReservationRoomRepository reservationRoomRepository;
+    private final RoomSlotService roomSlotService;
+    private final S3ImageService s3ImageService;
 
     private final MeetingRoomMapper meetingRoomMapper;
     private final RoomSlotMapper roomSlotMapper;
@@ -104,7 +111,7 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
                 })
                 .sorted(Comparator
                         // 상태 우선순위 정렬
-                        .comparingInt((MeetingRoomRes r) -> getPriority(r))
+                        .comparingInt(this::getPriority)
                         // 예약 수 내림차순 정렬
                         .thenComparing(Comparator.comparingInt(MeetingRoomRes::totalReservations).reversed())
                 )
@@ -124,166 +131,12 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
         return new MeetingRoomListRes(date, availableRoomCount, rooms);
     }
 
-    /**
-     * 예약 가능한/점검중 회의실에 대해 특정 날짜의 시간 슬롯 생성
-     * - 예외 상황에 대하여 재시도 3회, 대기시간 1초 -> 2초 -> 4초
-     * - 재시도 정책 : DB 연결 실패, DB 락 흭득 실패, 비관적 락 충돌
-     * @param targetDate 슬롯 생성 날짜
-     */
-    @Retryable(
-            retryFor = {
-                    CannotCreateTransactionException.class,
-                    CannotAcquireLockException.class,
-                    PessimisticLockingFailureException.class,
-                    CannotGetJdbcConnectionException.class
-            },
-            maxAttempts = 3,
-            backoff = @Backoff(delay = 1000, multiplier = 2)
-    )
-    @Override
-    @Transactional
-    public void generateSlots(LocalDate targetDate) {
-
-        log.info("전체 회의실 슬롯 생성 시작: targetDate={}", targetDate);
-
-        try {
-            List<MeetingRoom> meetingRooms =
-                    meetingRoomRepository.findByStatusIn(RoomStatus.AVAILABLE, RoomStatus.MAINTENANCE);
-
-            generateSlotsForMeetingRooms(meetingRooms, targetDate);
-
-            log.info("전체 회의실 슬롯 생성 완료: targetDate={}, roomCount={}", targetDate, meetingRooms.size());
-        } catch (Exception e) {
-            log.warn("슬롯 생성 재시도 발생: targetDate={}, error={}", targetDate, e.getClass().getSimpleName());
-            throw e;
-        }
-    }
-
-    // 최종 실패시 로직
-    @Recover
-    public void recover(Exception e, LocalDate targetDate) {
-        log.error("전체 회의실 슬롯 생성 최종 실패: targetDate={}", targetDate, e);
-    }
-
-    /**
-     * 요청한 회의실에 대해서만 특정 날짜의 슬롯 생성
-     *
-     * @param createRoomSlotsReq 회의실 ID 목록과 대상 날짜
-     */
-    @Override
-    @Transactional
-    public void generateSlotsForRoom(CreateRoomSlotsReq createRoomSlotsReq) {
-
-        log.info("선택 회의실 슬롯 생성 시작: targetDate={}, roomIds={}",
-                createRoomSlotsReq.targetDate(),
-                createRoomSlotsReq.meetingRoomIds());
-
-        List<MeetingRoom> meetingRooms = meetingRoomRepository.findAllById(createRoomSlotsReq.meetingRoomIds());
-
-        generateSlotsForMeetingRooms(meetingRooms, createRoomSlotsReq.targetDate());
-
-        log.info("선택 회의실 슬롯 생성 완료: targetDate={}, roomCount={}",
-                createRoomSlotsReq.targetDate(),
-                meetingRooms.size());
-    }
-
-    /**
-     * 회의실 목록에 대해 특정 날짜의 슬롯을 생성
-     *
-     * @param meetingRooms 회의실 목록
-     * @param targetDate 특정 날짜
-     */
-    private void generateSlotsForMeetingRooms(List<MeetingRoom> meetingRooms, LocalDate targetDate) {
-        if (meetingRooms == null || meetingRooms.isEmpty()) {
-            log.warn("슬롯 생성 대상 회의실이 없습니다. targetDate={}", targetDate);
-            return;
-        }
-
-        log.info("슬롯 생성 처리 시작: targetDate={}, roomCount={}",
-                targetDate, meetingRooms.size());
-
-        // 1. 필요한 정책 일괄 조회
-        List<String> policyKeys = List.of(
-                "RESERVATION_START_TIME",
-                "RESERVATION_END_TIME",
-                "SLOT_UNIT_MINUTES"
-        );
-
-        List<ReservationPolicy> policies = reservationPolicyRepository.findByPolicyKeyIn(policyKeys);
-
-        Map<String, String> policyMap = policies.stream()
-                .collect(Collectors.toMap(
-                        ReservationPolicy::getPolicyKey,
-                        ReservationPolicy::getPolicyValue
-                ));
-
-        LocalTime startTime = LocalTime.parse(policyMap.get("RESERVATION_START_TIME"));
-        LocalTime endTime = LocalTime.parse(policyMap.get("RESERVATION_END_TIME"));
-        int slotUnitMinutes = Integer.parseInt(policyMap.get("SLOT_UNIT_MINUTES"));
-
-        LocalDateTime dayStart = targetDate.atTime(startTime);
-        LocalDateTime dayEnd = targetDate.atTime(endTime);
-
-        // 2. 기존 슬롯 조회
-        List<RoomSlot> existingSlots =
-                roomSlotRepository.findByMeetingRoomInAndSlotStartAtGreaterThanEqualAndSlotEndAtLessThanEqual(
-                        meetingRooms, dayStart, dayEnd
-                );
-
-        Set<String> existingSlotKeys = existingSlots.stream()
-                .map(slot -> generateSlotKey(
-                        slot.getMeetingRoom().getRoomId(),
-                        slot.getSlotStartAt(),
-                        slot.getSlotEndAt()
-                ))
-                .collect(Collectors.toSet());
-
-        // 3. 생성할 대상 슬롯 수집
-        List<RoomSlotInsertDto> insertTargets = new ArrayList<>();
-
-        for (MeetingRoom meetingRoom : meetingRooms) {
-            LocalDateTime currentTime = dayStart;
-
-            while (currentTime.isBefore(dayEnd)) {
-                LocalDateTime nextTime = currentTime.plusMinutes(slotUnitMinutes);
-
-                String slotKey = generateSlotKey(meetingRoom.getRoomId(), currentTime, nextTime);
-
-                if (!existingSlotKeys.contains(slotKey)) {
-                    insertTargets.add(new RoomSlotInsertDto(
-                            meetingRoom.getRoomId(),
-                            currentTime,
-                            nextTime,
-                            true
-                    ));
-                }
-
-                currentTime = nextTime;
-            }
-        }
-
-        log.info("신규 슬롯 계산 완료: targetDate={}, insertTargetCount={}",
-                targetDate, insertTargets.size());
-
-        if (!insertTargets.isEmpty()) {
-            roomSlotBulkRepository.bulkInsert(insertTargets);
-
-            log.info("슬롯 bulk insert 완료: targetDate={}, insertedCount={}",
-                    targetDate, insertTargets.size());
-            return;
-        }
-        log.info("추가 생성할 슬롯이 없습니다. targetDate={}", targetDate);
-    }
-
-    // 슬롯 증복 여부 비교 - 고유 key 생성
-    private String generateSlotKey(Long roomId, LocalDateTime startAt, LocalDateTime endAt) {
-        return roomId + "|" + startAt + "|" + endAt;
-    }
-
     // 회의실 상태 여부에 따른 상태 메시지 반환
     private String getStatusMessage(MeetingRoom meetingRoom, List<RoomSlotRes> roomSlots) {
-        if (meetingRoom.getStatus() == RoomStatus.MAINTENANCE) {
-            return "점검 중";
+        RoomStatus status = meetingRoom.getStatus();
+
+        if (status == RoomStatus.INACTIVE || status == RoomStatus.MAINTENANCE) {
+            return status.getLabel();
         }
 
         boolean hasReservableSlot = roomSlots.stream().anyMatch(RoomSlotRes::isActive);
@@ -292,18 +145,19 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
             return "예약 마감";
         }
 
-        return "예약 가능";
+        return status.getLabel();
     }
 
     // 회의실 정렬 우선순위 반환
     private int getPriority(MeetingRoomRes room) {
-        if ("예약 가능".equals(room.statusMessage())) {
-            return 0;
-        }
+
+        RoomStatus status = room.status();
+
         if ("예약 마감".equals(room.statusMessage())) {
             return 1;
         }
-        return 2;
+
+        return status.getPriority();
     }
 
     /**
@@ -314,10 +168,13 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
      * 관리자 회의실 조회
      */
     @Override
+    @Transactional
     public List<MeetingRoomAdminRes> readMeetingRoomAdminList() {
 
+        log.info("회의실 목록 조회 시작");
         List<MeetingRoom> rooms = meetingRoomRepository.findAll();
 
+        log.info("회의실 목록 조회 완료: roomsCount={}", rooms.size());
         return rooms.stream()
                 .map(room -> new MeetingRoomAdminRes(
                         room.getRoomId(),
@@ -327,9 +184,122 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
                         room.getHourlyPrice(),
                         room.getStatus(),
                         room.getImageUrl(),
-                        room.getTotalReservations()
+                        room.getTotalReservations(),
+                        room.getCreatedAt(),
+                        room.getUpdatedAt()
                 ))
+                .sorted(
+                        Comparator.comparingInt((MeetingRoomAdminRes room) -> room.status().getPriority())
+                                .thenComparing(Comparator.comparingInt(MeetingRoomAdminRes::totalReservations).reversed())
+                )
                 .toList();
     }
 
+    /**
+     * 회의실 생성
+     * @param meetingRoomReq
+     */
+    @Override
+    @Transactional
+    public void createMeetingRoom(MeetingRoomReq meetingRoomReq, MultipartFile imageFile) {
+        log.info("회의실 생성 시작 - roomName={}", meetingRoomReq.roomName());
+
+        String imageUrl = null;
+
+        if (imageFile != null && !imageFile.isEmpty()) {
+            imageUrl = s3ImageService.upload(imageFile, "room");
+        }
+
+        MeetingRoom meetingRoom = MeetingRoom.builder()
+                .roomName(meetingRoomReq.roomName())
+                .capacity(meetingRoomReq.capacity())
+                .description(meetingRoomReq.description())
+                .hourlyPrice(meetingRoomReq.hourlyPrice())
+                .status(meetingRoomReq.status())
+                .imageUrl(imageUrl)
+                .build();
+
+        MeetingRoom savedRoom = meetingRoomRepository.save(meetingRoom);
+
+        roomSlotService.createInitialSlotsForRoom(savedRoom);
+
+        log.info("회의실 생성 완료 - roomId={}", savedRoom.getRoomId());
+    }
+
+    @Transactional
+    public void modifyMeetingRoom(Long roomId, MeetingRoomReq meetingRoomReq, MultipartFile imageFile) {
+        log.info("회의실 수정 시작 - roomId={}", roomId);
+
+        MeetingRoom meetingRoom = loadMeetingRoom(roomId);
+
+        String imageUrl = meetingRoom.getImageUrl();
+
+        if (imageFile != null && !imageFile.isEmpty()) {
+            imageUrl = s3ImageService.upload(imageFile, "room");
+        }
+
+        meetingRoom.updateRoomInfo(
+                meetingRoomReq.roomName(),
+                meetingRoomReq.capacity(),
+                meetingRoomReq.description(),
+                meetingRoomReq.hourlyPrice(),
+                meetingRoomReq.status(),
+                imageUrl
+        );
+
+        log.info("회의실 수정 완료 - roomId={}", roomId);
+    }
+
+    @Transactional
+    public void changeMeetingRoomStatus(Long roomId, RoomStatus targetStatus) {
+        log.info("회의실 상태 변경 요청 시작 - roomId={}, targetStatus={}", roomId, targetStatus);
+
+        MeetingRoom meetingRoom = loadMeetingRoom(roomId);
+
+        RoomStatus currentStatus = meetingRoom.getStatus();
+
+        log.info("현재 회의실 상태 확인 - roomId={}, currentStatus={}", roomId, currentStatus);
+
+        if (currentStatus == targetStatus) {
+            log.info("회의실 상태 변경 생략 - 동일한 상태 요청 - roomId={}, status={}", roomId, targetStatus);
+            return;
+        }
+
+        if (targetStatus == RoomStatus.INACTIVE) {
+            log.info("회의실 INACTIVE 전환 검증 시작 - roomId={}", roomId);
+            changeToInactive(meetingRoom);
+            return;
+        }
+
+        meetingRoom.updateStatus(targetStatus);
+
+        log.info("회의실 상태 변경 완료 - roomId={}, from={}, to={}", roomId, currentStatus, targetStatus);
+    }
+
+    private void changeToInactive(MeetingRoom meetingRoom) {
+
+        Long roomId = meetingRoom.getRoomId();
+        LocalDateTime now = LocalDateTime.now();
+
+        log.info("회의실 INACTIVE 변경 검증 시작 - roomId={}, 기준시간={}", roomId, now);
+
+        boolean hasFutureReservation =
+                reservationRoomRepository.existsFutureReservationByRoomId(roomId, now);
+
+        log.info("미래 예약 존재 여부 확인 - roomId={}, hasFutureReservation={}", roomId, hasFutureReservation);
+
+        if (hasFutureReservation) {
+            log.info("회의실 INACTIVE 변경 실패 - 미래 예약 존재 - roomId={}", roomId);
+            throw new BusinessException(ErrorCode.ROOM_STATUS_CHANGE_FORBIDDEN);
+        }
+
+        meetingRoom.updateStatus(RoomStatus.INACTIVE);
+
+        log.info("회의실 상태 변경 완료 - roomId={}, to=INACTIVE", roomId);
+    }
+
+    private MeetingRoom loadMeetingRoom(Long roomId) {
+        return meetingRoomRepository.findById(roomId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND));
+    }
 }
