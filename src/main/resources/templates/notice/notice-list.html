@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>공지사항 | RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+<div th:replace="~{fragments/header :: header}"></div>
+
+<main class="max-w-5xl mx-auto px-6 py-10">
+
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">공지사항</h1>
+        <p class="text-sm text-gray-500 mt-1">RoomFlow의 새로운 소식과 이용 안내를 확인하세요.</p>
+    </div>
+
+    <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div class="grid grid-cols-12 px-6 py-4 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-500">
+            <div class="col-span-7">제목</div>
+            <div class="col-span-2 text-center">조회수</div>
+            <div class="col-span-3 text-right">작성일</div>
+        </div>
+
+        <div th:if="${!noticePage.isEmpty()}">
+            <a th:each="notice : ${notices}"
+               th:href="@{/notices/{id}(id=${notice.noticeId})}"
+               class="grid grid-cols-12 items-center px-6 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition">
+
+                <div class="col-span-7 min-w-0 flex items-center gap-2">
+                    <span th:if="${notice.pinned}"
+                          class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-xs font-semibold">
+                        중요
+                    </span>
+
+                    <span class="truncate text-sm font-medium text-gray-800"
+                          th:text="${notice.title}">
+                        공지 제목
+                    </span>
+                </div>
+
+                <div class="col-span-2 text-center text-sm text-gray-500"
+                     th:text="${notice.viewCount}">
+                    0
+                </div>
+
+                <div class="col-span-3 text-right text-sm text-gray-400"
+                     th:text="${#temporals.format(notice.createdAt, 'yyyy.MM.dd')}">
+                    2026.04.08
+                </div>
+            </a>
+        </div>
+
+        <div th:if="${noticePage.isEmpty()}"
+             class="py-16 text-center text-sm text-gray-400">
+            등록된 공지사항이 없습니다.
+        </div>
+    </section>
+
+    <!-- pagination -->
+    <nav th:if="${noticePage.totalPages > 1}"
+         class="mt-8 flex items-center justify-center gap-2">
+
+        <!-- 이전 -->
+        <a th:if="${currentPage > 1}"
+           th:href="@{/notices(page=${currentPage - 1}, size=${size})}"
+           class="inline-flex items-center justify-center min-w-[44px] h-10 px-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 transition">
+            이전
+        </a>
+        <span th:unless="${currentPage > 1}"
+              class="inline-flex items-center justify-center min-w-[44px] h-10 px-3 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-300 cursor-default">
+            이전
+        </span>
+
+        <!-- 페이지 번호 -->
+        <th:block th:each="pageNum : ${#numbers.sequence(1, noticePage.totalPages)}">
+            <a th:if="${pageNum != currentPage}"
+               th:href="@{/notices(page=${pageNum}, size=${size})}"
+               class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 transition"
+               th:text="${pageNum}">
+                1
+            </a>
+
+            <span th:if="${pageNum == currentPage}"
+                  class="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-blue-600 text-white text-sm font-semibold"
+                  th:text="${pageNum}">
+                1
+            </span>
+        </th:block>
+
+        <!-- 다음 -->
+        <a th:if="${currentPage < noticePage.totalPages}"
+           th:href="@{/notices(page=${currentPage + 1}, size=${size})}"
+           class="inline-flex items-center justify-center min-w-[44px] h-10 px-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-600 hover:bg-gray-50 transition">
+            다음
+        </a>
+        <span th:unless="${currentPage < noticePage.totalPages}"
+              class="inline-flex items-center justify-center min-w-[44px] h-10 px-3 rounded-lg border border-gray-200 bg-gray-100 text-sm text-gray-300 cursor-default">
+            다음
+        </span>
+    </nav>
+
+</main>
+</body>
+</html>

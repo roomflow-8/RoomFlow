@@ -25,6 +25,9 @@ public enum ErrorCode {
 	SOCIAL_REFRESH_TOKEN_NOT_FOUND(HttpStatus.BAD_REQUEST, "OAUTH_003","소셜 refresh token이 존재하지 않습니다."),
 	SOCIAL_UNLINK_FAILED(HttpStatus.BAD_GATEWAY, "OAUTH_004", "소셜 계정 연동 해제에 실패했습니다."),
 
+	//공지사항 에러
+	NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTICE_001", "공지사항을 찾을 수 없습니다."),
+
 	// 회의실
 	ROOM_NOT_FOUND(HttpStatus.NOT_FOUND, "ROOM_001", "회의실을 찾을 수 없습니다."),
 	ROOM_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "ROOM_002", "예약이 가능한 회의실이 아닙니다."),
