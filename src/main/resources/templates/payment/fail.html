@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>결제 실패</title>
+</head>
+<body>
+<div class="container">
+    <h1>결제에 실패했습니다</h1>
+
+    <div class="error-info">
+        <p>에러 코드: <span th:text="${fail.code}"></span></p>
+        <p>에러 메시지: <span th:text="${fail.message}"></span></p>
+        <p th:if="${fail.orderId != null}">주문번호: <span th:text="${fail.orderId}"></span></p>
+    </div>
+
+    <a href="/rooms" class="btn">홈으로 돌아가기</a>
+</div>
+
+</body>
+</html>

@@ -49,7 +49,7 @@ public class SecurityConfig {
 										   ClientRegistrationRepository clientRegistrationRepository) throws Exception {
 		httpSecurity
 				.csrf(csrf -> csrf
-						.ignoringRequestMatchers("/api/v1/**", "/users/email/send", "/users/email/verify"))
+						.ignoringRequestMatchers("/api/v1/**", "/users/email/send", "/users/email/verify", "/api/orders"))
 				.sessionManagement(session -> session
 						.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
 				)

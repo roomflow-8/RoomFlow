@@ -63,6 +63,9 @@ dependencies {
 
     implementation 'net.datafaker:datafaker:2.5.4'
 
+    //WebClient
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
 }
 
 tasks.named('test') {

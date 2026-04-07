@@ -28,4 +28,6 @@ public interface ReservationService {
     void cancelReservationEquipments(Long userId, Long reservationId, CancelReservationEquipmentsReq request);
 
     void expirePendingEquipments(Long changedByUserId, List<Long> reservationEquipmentIds);
+
+    ReservationRoomRes readConfirmedReservationRoom(CustomUser user, Long reservationId);
 }

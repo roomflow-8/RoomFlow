@@ -56,8 +56,24 @@ public enum ErrorCode {
 	EQUIPMENT_ILLEGAL_ARGUMENT(HttpStatus.BAD_REQUEST, "EQUIPMENT_004", "유효하지 않은 수량입니다."),
 
 	// 권한
-	NO_PERMISSION(HttpStatus.FORBIDDEN, "AUTH_001", "권한이 없습니다.");
+	NO_PERMISSION(HttpStatus.FORBIDDEN, "AUTH_001", "권한이 없습니다."),
 
+	// 결제
+	PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PAYMENT_001", "결제 정보를 찾을 수 없습니다."),
+	PAYMENT_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "PAYMENT_002", "이미 결제 요청이 존재합니다."),
+	PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "PAYMENT_003", "결제 금액이 일치하지 않습니다."),
+	PAYMENT_INVALID_STATUS(HttpStatus.BAD_REQUEST, "PAYMENT_004", "결제를 진행할 수 없는 상태입니다."),
+	PAYMENT_CONFIRM_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "PAYMENT_005", "결제 승인에 실패했습니다."),
+	PAYMENT_CANCEL_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "PAYMENT_006", "결제 취소에 실패했습니다."),
+	PAYMENT_ALREADY_COMPLETED(HttpStatus.BAD_REQUEST, "PAYMENT_007", "이미 결제가 완료된 예약입니다."),
+
+	// 토스페이먼츠 에러
+	PAY_PROCESS_CANCELED(HttpStatus.BAD_REQUEST, "PAYMENT_008", "구매자에 의해 결제가 취소되었습니다."),
+	PAY_PROCESS_ABORTED(HttpStatus.BAD_REQUEST, "PAYMENT_009", "결제 인증에 실패했습니다."),
+	REJECT_CARD_COMPANY(HttpStatus.BAD_REQUEST, "PAYMENT_010", "카드사에서 결제를 거부했습니다. 해당 카드사에 문의해주세요."),
+	UNAUTHORIZED_KEY(HttpStatus.UNAUTHORIZED, "PAYMENT_011", "API키를 다시 확인해주세요."),
+	NOT_FOUND_PAYMENT_SESSION(HttpStatus.NOT_FOUND, "PAYMENT_012", "결제 시간이 만료되어 결제 진행 데이터가 존재하지 않습니다."),
+	FORBIDDEN_REQUEST(HttpStatus.FORBIDDEN, "PAYMENT_013", "API키 또는 주문번호를 다시 확인해주세요.");
 
 	private final HttpStatus status;
 	private final String code;
