@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+                     xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+
+<head>
+    <!-- 1. 토스 페이먼트 SDK 설치 -->
+    <script src="https://js.tosspayments.com/v2/standard"></script>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div class="container">
+    <h1>RoomFlow 예약 결제</h1>
+
+    <div id="payment-method"></div>
+    <!-- 이용약관 UI -->
+  <!--  <div id="agreement"></div>-->
+    // 5. 결제하기 버튼에 결체 요청 메서드를 등록
+    <button type="button" onclick="requestPayment()"  id="payment-button" style="margin-top: 30px">결제하기</button>
+</div>
+</div>
+
+<script th:src="@{/js/checkout.js}"></script>
+</body>
+</html>

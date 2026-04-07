@@ -299,7 +299,7 @@ public class ReservationServiceImpl implements ReservationService {
 		Reservation reservation = reservationRepository.findById(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
-		log.info("reservation", reservation.getReservationId());
+		log.info("addEquipmentsToReservation, {}", reservation.getReservationId());
 
 		if (!reservation.getUser().getUserId().equals(userId)) {
 			throw new BusinessException(ErrorCode.UNAUTHORIZED);
@@ -1073,6 +1073,78 @@ public class ReservationServiceImpl implements ReservationService {
 
 	}
 
+	/**
+	 * 결제용 예약 정보 조회 (확정된 비품 포함)
+	 */
+	@Override
+	@Transactional
+	public ReservationRoomRes readConfirmedReservationRoom(CustomUser user, Long reservationId) {
+
+			long start = System.currentTimeMillis();
+			Long userId = user.getUserId();
+
+			log.info("결제용 예약 조회 시작 - userId={}, reservationId={}", userId, reservationId);
+
+			// 1. 예약 조회
+			Reservation reservation = reservationRepository.findByIdWithUserAndMeetingRoom(reservationId)
+					.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
+
+			// 2. 권한 검증
+			if (!user.isAdmin() && !userId.equals(reservation.getUser().getUserId())) {
+				throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
+			}
+
+			// 3. 회의실 예약 조회
+			List<ReservationRoom> reservationRooms = reservationRoomRepository.findByReservation(reservation);
+
+			if (reservationRooms.isEmpty()) {
+				throw new BusinessException(ErrorCode.RESERVATION_NOT_FOUND);
+			}
+
+			MeetingRoom meetingRoom = reservation.getMeetingRoom();
+
+			// 4. 시간 조회
+			List<RoomSlot> roomSlots = reservationRooms.stream()
+					.map(ReservationRoom::getRoomSlot)
+					.sorted(Comparator.comparing(RoomSlot::getSlotStartAt))
+					.toList();
+
+			LocalDate reservationDate = roomSlots.getFirst().getSlotStartAt().toLocalDate();
+			List<ReservationTimeSlot> reservationTimeSlots = makeReservationTimeSlot(roomSlots);
+
+			// 5. 비품 예약 조회 - CONFIRMED 상태로 조회
+			List<EquipmentItem> equipmentItems = reservationEquipmentRepository
+					.findByReservation_ReservationIdAndStatus(reservationId, ReservationStatus.CONFIRMED)
+					.stream()
+					.map(EquipmentItem::from)
+					.toList();
+
+			// 6. 금액 계산 - 회의실 + 비품 모두 포함
+			BigDecimal roomAmount = calcTotalAmount(meetingRoom.getHourlyPrice(), roomSlots);
+
+			BigDecimal equipmentAmount = equipmentItems.stream()
+					.map(EquipmentItem::totalAmount)
+					.reduce(BigDecimal.ZERO, BigDecimal::add);
+
+			BigDecimal totalAmount = roomAmount.add(equipmentAmount);
+
+			long elapsed = System.currentTimeMillis() - start;
+			log.info("결제용 예약 조회 완료 - reservationId={}, totalAmount={}, elapsedMs={}",
+					reservationId, totalAmount, elapsed);
+
+			return reservationRoomMapper.toReservationRoomRes(
+					reservation,
+					meetingRoom,
+					reservationTimeSlots,
+					equipmentItems,
+					reservationDate,
+					roomSlots.size(),
+					roomAmount,
+					equipmentAmount,
+					totalAmount
+			);
+
+	}
 }
 
 

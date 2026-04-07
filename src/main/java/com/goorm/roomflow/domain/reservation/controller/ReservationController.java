@@ -1,7 +1,8 @@
 package com.goorm.roomflow.domain.reservation.controller;
 
 import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
-import com.goorm.roomflow.domain.equipment.service.EquipmentService;
+import com.goorm.roomflow.domain.payment.dto.request.PaymentCheckoutReq;
+import com.goorm.roomflow.domain.payment.service.PaymentService;
 import com.goorm.roomflow.domain.reservation.dto.request.*;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
 import com.goorm.roomflow.domain.reservation.dto.response.ReservationRoomRes;
@@ -28,6 +29,7 @@ public class ReservationController {
 
 	private final ReservationService reservationService;
 	private final ReservationLockFacade reservationLockFacade;
+	private final PaymentService paymentService;
 
 	/**
 	 * 회의실 예약 생성 처리
@@ -111,7 +113,7 @@ public class ReservationController {
 
 	@PostMapping("/{reservationId}/equipments")
 	public String createEquipmentReservation(
-			@AuthenticationPrincipal CustomUser currentUser,
+				@AuthenticationPrincipal CustomUser currentUser,
 			@PathVariable("reservationId") Long reservationId,
 			@ModelAttribute EquipmentFormReq formReq,
 			RedirectAttributes redirectAttributes) {
@@ -160,10 +162,29 @@ public class ReservationController {
 	) {
 		try {
 			reservationService.confirmReservation(currentUser.getUserId(), reservationId, request);
+
+			// 2. 확정된 예약 정보 조회 (CONFIRMED 비품 포함)
+			ReservationRoomRes reservationRoom = reservationService.readConfirmedReservationRoom(currentUser, reservationId);
+
+			// 3. 결제 정보 생성
+			PaymentCheckoutReq checkoutReq = paymentService.createCheckoutInfo(reservationRoom);
+
+			// 4. redirect로 전달
+			redirectAttributes.addAttribute("amount", checkoutReq.amount());
+			redirectAttributes.addAttribute("orderId", checkoutReq.orderId());
+			redirectAttributes.addAttribute("orderName", checkoutReq.orderName());
+
+			//비품 추가 건에서 확인TODO:
+			redirectAttributes.addAttribute("reservationId", checkoutReq.reservationId());
+			redirectAttributes.addAttribute("roomAmount", checkoutReq.roomAmount());
+			redirectAttributes.addAttribute("equipmentAmount", checkoutReq.equipmentAmount());
+
+
 			redirectAttributes.addFlashAttribute("alertType", "success");
 			redirectAttributes.addFlashAttribute("message", "예약이 확정되었습니다.");
 
-			return "redirect:/rooms";
+			return "redirect:/payment/checkout";
+		//	return "redirect:/rooms";
 		} catch (BusinessException e) {
 			redirectAttributes.addFlashAttribute("alertType", "error");
 			redirectAttributes.addFlashAttribute("message", e.getMessage());
