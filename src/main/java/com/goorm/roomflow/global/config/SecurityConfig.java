@@ -62,7 +62,7 @@ public class SecurityConfig {
 								"/css/**", "/js/**", "/images/**", "/reservations/**", "/api/v1/**"
 						).permitAll()
 						.requestMatchers(HttpMethod.GET, "/rooms/**").permitAll()
-						.requestMatchers("/users/mypage/**", "/users/reservationlist").authenticated()
+						.requestMatchers("/users/mypage/**", "/users/reservationlist", "/admin/**").authenticated()
 						.anyRequest().authenticated()
 				)
 				.formLogin(form -> form
