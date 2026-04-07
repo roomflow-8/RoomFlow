@@ -30,6 +30,11 @@ public enum ErrorCode {
 	ROOM_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "ROOM_002", "예약이 가능한 회의실이 아닙니다."),
 	ROOM_SLOT_NOT_FOUND(HttpStatus.NOT_FOUND, "ROOM_003", "예약 가능 시간을 찾을 수 없습니다."),
 	ROOM_STATUS_CHANGE_FORBIDDEN(HttpStatus.BAD_REQUEST, "ROOM_004", "이후 예약이 존재하여 회의실 상태를 변경할 수 없습니다."),
+	ROOM_SLOT_GENERATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "ROOM_005", "사용 가능한 회의실만 슬롯 생성이 가능합니다."),
+	ROOM_SLOT_DATE_HAS_RESERVED_SLOT(HttpStatus.BAD_REQUEST,"ROOM_006", "예약된 슬롯이 포함되어 있어 전체 비활성화할 수 없습니다."),
+	ROOM_SLOT_PAST_NOT_MODIFIABLE(HttpStatus.BAD_REQUEST,"ROOM_007", "과거 슬롯은 수정할 수 없습니다."),
+	ROOM_SLOT_NOT_BELONG_TO_ROOM(HttpStatus.BAD_REQUEST, "ROOM_008","해당 회의실의 슬롯이 아닙니다."),
+	ROOM_SLOT_DATE_NOT_FOUND(HttpStatus.NOT_FOUND,"ROOM_009", "해당 날짜의 슬롯이 존재하지 않습니다."),
 	POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_001", "정책 정보를 찾을 수 없습니다."),
 
 	// 예약
