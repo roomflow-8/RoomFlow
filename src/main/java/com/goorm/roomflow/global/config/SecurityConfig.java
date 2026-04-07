@@ -61,7 +61,7 @@ public class SecurityConfig {
 								"/swagger-ui/**", "/v3/api-docs/**",
 								"/css/**", "/js/**", "/images/**", "/reservations/**", "/api/v1/**"
 						).permitAll()
-						.requestMatchers(HttpMethod.GET, "/rooms/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/rooms/**", "/notices/**").permitAll()
 						.requestMatchers("/users/mypage/**", "/users/reservationlist", "/admin/**").authenticated()
 						.anyRequest().authenticated()
 				)

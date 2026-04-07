@@ -1,0 +1,53 @@
+<th:block th:fragment="noticePreview(notice)">
+    <section class="flex items-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-sm">
+
+        <!-- 공지 없을 때 -->
+        <div th:if="${notice == null}"
+             class="flex items-center justify-between w-full min-w-0">
+            <div class="flex items-center gap-2 text-sm text-gray-400">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 text-xs font-medium">
+                    공지
+                </span>
+                <span>등록된 공지사항이 없습니다.</span>
+            </div>
+
+            <a th:href="@{/notices}"
+               class="shrink-0 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition">
+                <span>목록보기</span>
+                <i class="fi fi-rr-angle-small-right flex items-center leading-none"></i>
+            </a>
+        </div>
+
+        <!-- 공지 있을 때 -->
+        <div th:if="${notice != null}"
+             class="flex items-center justify-between w-full min-w-0 gap-3">
+
+            <div class="flex items-center min-w-0 flex-1 gap-3">
+                <!-- 공지 라벨 -->
+                <span class="shrink-0 inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-100">
+                    공지
+                </span>
+
+                <!-- 제목 -->
+                <a th:href="@{/notices/{id}(id=${notice.noticeId})}"
+                   class="min-w-0 flex items-center gap-2 text-sm text-gray-800 hover:text-blue-600 transition">
+
+                    <span class="truncate font-medium"
+                          th:text="${notice.title}">
+                    </span>
+                </a>
+            </div>
+
+            <div class="shrink-0 flex items-center gap-3 text-xs text-gray-400">
+                <span th:text="${#temporals.format(notice.createdAt,'MM.dd')}"></span>
+                <span class="w-px h-3 bg-gray-200"></span>
+
+                <a th:href="@{/notices}"
+                   class="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-700 transition">
+                    <span>목록보기</span>
+                    <i class="fi fi-rr-angle-small-right flex items-center leading-none"></i>
+                </a>
+            </div>
+        </div>
+    </section>
+</th:block>

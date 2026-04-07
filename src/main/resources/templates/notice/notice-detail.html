@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>공지사항 상세 | RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+<div th:replace="~{fragments/header :: header}"></div>
+
+<main class="max-w-4xl mx-auto px-6 py-10">
+
+    <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <div class="px-8 py-8">
+            <!-- 중요 공지 라벨 (제목 위로 이동) -->
+            <div th:if="${notice.pinned}"
+                 class="mb-3 inline-flex items-center px-3 py-1 rounded-lg bg-blue-50 text-blue-600 text-xs font-semibold">
+                중요 공지
+            </div>
+
+            <!-- 제목 -->
+            <h1 class="text-2xl font-bold text-gray-900 break-words mb-3"
+                th:text="${notice.title}">
+                공지 제목
+            </h1>
+
+            <!-- 메타 -->
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-400">
+                <span class="inline-flex items-center gap-1.5">
+                    <i data-lucide="eye" class="w-4 h-4"></i>
+                    <span>조회수</span>
+                    <span th:text="${notice.viewCount}">0</span>
+                </span>
+
+                <span class="text-gray-300">|</span>
+
+                <span>
+                    작성일
+                    <span th:text="${#temporals.format(notice.createdAt, 'yyyy.MM.dd HH:mm')}"></span>
+                </span>
+
+                <th:block th:if="${notice.updatedAt != null and !notice.updatedAt.equals(notice.createdAt)}">
+                    <span class="text-gray-300">|</span>
+                    <span>
+                        수정일
+                        <span th:text="${#temporals.format(notice.updatedAt, 'yyyy.MM.dd HH:mm')}"></span>
+                    </span>
+                </th:block>
+            </div>
+        </div>
+
+        <!-- 구분선 -->
+        <div class="border-t border-gray-200"></div>
+
+        <!-- 본문 -->
+        <div class="px-8 py-10">
+            <article class="whitespace-pre-line break-words text-[15px] leading-8 text-gray-800"
+                     th:text="${notice.content}">
+                공지사항 본문 내용
+            </article>
+        </div>
+    </section>
+
+    <!-- 목록 버튼 -->
+    <div class="mt-6">
+        <a th:href="@{/notices(page=1, size=10)}"
+           class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+            목록으로 돌아가기
+        </a>
+    </div>
+
+</main>
+
+<script>
+    lucide.createIcons();
+</script>
+</body>
+</html>

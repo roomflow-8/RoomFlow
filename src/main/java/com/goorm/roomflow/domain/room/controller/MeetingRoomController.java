@@ -1,5 +1,6 @@
 package com.goorm.roomflow.domain.room.controller;
 
+import com.goorm.roomflow.domain.notice.service.NoticeService;
 import com.goorm.roomflow.domain.room.dto.response.MeetingRoomListRes;
 import com.goorm.roomflow.domain.room.service.MeetingRoomService;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 public class MeetingRoomController {
 
     private final MeetingRoomService meetingRoomService;
+    private final NoticeService noticeService;
 
     @GetMapping
     public String rooms(
@@ -33,6 +35,7 @@ public class MeetingRoomController {
 
         model.addAttribute("meetingRoomList", meetingRoomListRes);
         model.addAttribute("selectedDate", selectedDate);
+        model.addAttribute("notice", noticeService.findPreviewNotice());
 
         return "meeting-room/list";
     }
