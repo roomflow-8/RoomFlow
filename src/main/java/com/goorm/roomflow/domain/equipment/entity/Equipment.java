@@ -50,10 +50,7 @@ public class Equipment extends BaseEntity {
 					 int maintenanceLimit, BigDecimal price, EquipmentStatus status,
 					 int totalReservations, String imageUrl) {
 
-		// SQL의 CHECK 제약조건 (total_stock >= 0) 검증
-		if (totalStock < 0) {
-			throw new IllegalArgumentException("재고는 0보다 작을 수 없습니다.");
-		}
+		validate(equipmentName, totalStock, maintenanceLimit, price);
 
 		this.equipmentName = equipmentName;
 		this.totalStock = totalStock;
@@ -71,6 +68,27 @@ public class Equipment extends BaseEntity {
 		this.totalStock = newStock;
 	}
 
+	public void update(
+			String equipmentName,
+			int totalStock,
+			String description,
+			int maintenanceLimit,
+			BigDecimal price,
+			EquipmentStatus status,
+			String imageUrl
+	) {
+		validate(equipmentName, totalStock, maintenanceLimit, price);
+
+		this.equipmentName = equipmentName;
+		this.totalStock = totalStock;
+		this.description = description;
+		this.maintenanceLimit = maintenanceLimit;
+		this.price = price;
+		this.imageUrl = imageUrl;
+
+		changeStatus(status);
+	}
+
 	public void incrementReservations() {
 		this.totalReservations++;
 	}
@@ -82,6 +100,49 @@ public class Equipment extends BaseEntity {
 	}
 
 	public void changeStatus(EquipmentStatus status) {
+		if (status == null) {
+			throw new IllegalArgumentException("비품 상태는 필수입니다.");
+		}
 		this.status = status;
 	}
+
+	private void validate(
+			String equipmentName,
+			int totalStock,
+			int maintenanceLimit,
+			BigDecimal price
+	) {
+		validateEquipmentName(equipmentName);
+		validateTotalStock(totalStock);
+		validateMaintenanceLimit(maintenanceLimit);
+		validatePrice(price);
+	}
+
+	private void validateEquipmentName(String equipmentName) {
+		if (equipmentName == null || equipmentName.isBlank()) {
+			throw new IllegalArgumentException("비품 이름은 필수입니다.");
+		}
+	}
+
+	private void validateTotalStock(int totalStock) {
+		if (totalStock < 0) {
+			throw new IllegalArgumentException("비품 개수는 0 이상이어야 합니다.");
+		}
+	}
+
+	private void validateMaintenanceLimit(int maintenanceLimit) {
+		if (maintenanceLimit < 0) {
+			throw new IllegalArgumentException("점검 기준 개수는 0 이상이어야 합니다.");
+		}
+	}
+
+	private void validatePrice(BigDecimal price) {
+		if (price == null) {
+			throw new IllegalArgumentException("비품 요금은 필수입니다.");
+		}
+		if (price.compareTo(BigDecimal.ZERO) < 0) {
+			throw new IllegalArgumentException("비품 요금은 0 이상이어야 합니다.");
+		}
+	}
+
 }

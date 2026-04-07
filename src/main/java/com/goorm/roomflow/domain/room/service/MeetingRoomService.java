@@ -13,7 +13,7 @@ public interface MeetingRoomService {
     MeetingRoomListRes getMeetingRoomsByDate(LocalDate date);
 
     List<MeetingRoomAdminRes> readMeetingRoomAdminList();
-    void createMeetingRoom(MeetingRoomReq meetingRoomReq, MultipartFile imageFile);
-    void modifyMeetingRoom(Long roomId, MeetingRoomReq meetingRoomReq, MultipartFile imageFile);
+    void createMeetingRoom(MeetingRoomReq meetingRoomReq);
+    void modifyMeetingRoom(Long roomId, MeetingRoomReq meetingRoomReq );
     void changeMeetingRoomStatus(Long roomId, RoomStatus targetStatus);
 }

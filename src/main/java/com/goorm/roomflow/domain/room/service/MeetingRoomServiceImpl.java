@@ -201,23 +201,23 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
      */
     @Override
     @Transactional
-    public void createMeetingRoom(MeetingRoomReq meetingRoomReq, MultipartFile imageFile) {
+    public void createMeetingRoom(MeetingRoomReq meetingRoomReq) {
         log.info("회의실 생성 시작 - roomName={}", meetingRoomReq.roomName());
 
         String imageUrl = null;
 
-        if (imageFile != null && !imageFile.isEmpty()) {
-            imageUrl = s3ImageService.upload(imageFile, "room");
+        if (meetingRoomReq.imageFile() != null && !meetingRoomReq.imageFile().isEmpty()) {
+            imageUrl = s3ImageService.upload(meetingRoomReq.imageFile(), "room");
         }
 
-        MeetingRoom meetingRoom = MeetingRoom.builder()
-                .roomName(meetingRoomReq.roomName())
-                .capacity(meetingRoomReq.capacity())
-                .description(meetingRoomReq.description())
-                .hourlyPrice(meetingRoomReq.hourlyPrice())
-                .status(meetingRoomReq.status())
-                .imageUrl(imageUrl)
-                .build();
+        MeetingRoom meetingRoom = new MeetingRoom(
+                meetingRoomReq.roomName(),
+                meetingRoomReq.capacity(),
+                meetingRoomReq.description(),
+                meetingRoomReq.hourlyPrice(),
+                meetingRoomReq.status(),
+                imageUrl
+        );
 
         MeetingRoom savedRoom = meetingRoomRepository.save(meetingRoom);
 
@@ -227,15 +227,15 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
     }
 
     @Transactional
-    public void modifyMeetingRoom(Long roomId, MeetingRoomReq meetingRoomReq, MultipartFile imageFile) {
+    public void modifyMeetingRoom(Long roomId, MeetingRoomReq meetingRoomReq) {
         log.info("회의실 수정 시작 - roomId={}", roomId);
 
         MeetingRoom meetingRoom = loadMeetingRoom(roomId);
 
         String imageUrl = meetingRoom.getImageUrl();
 
-        if (imageFile != null && !imageFile.isEmpty()) {
-            imageUrl = s3ImageService.upload(imageFile, "room");
+        if (meetingRoomReq.imageFile() != null && !meetingRoomReq.imageFile().isEmpty()) {
+            imageUrl = s3ImageService.upload(meetingRoomReq.imageFile(), "room");
         }
 
         meetingRoom.updateRoomInfo(

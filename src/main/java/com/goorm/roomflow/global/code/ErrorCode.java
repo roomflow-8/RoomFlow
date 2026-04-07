@@ -55,7 +55,7 @@ public enum ErrorCode {
 	EQUIPMENT_OUT_OF_STOCK(HttpStatus.CONFLICT, "EQUIPMENT_002", "비품 재고가 부족합니다."),
 	EQUIPMENT_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "EQUIPMENT_003", "사용할 수 없는 비품입니다."),
 	EQUIPMENT_ILLEGAL_ARGUMENT(HttpStatus.BAD_REQUEST, "EQUIPMENT_004", "유효하지 않은 수량입니다."),
-
+	EQUIPMENT_STATUS_CHANGE_FORBIDDEN(HttpStatus.BAD_REQUEST, "EQUIPMENT_005", "이후 예약이 존재하여 비품 상태를 변경할 수 없습니다."),
 	// 권한
 	NO_PERMISSION(HttpStatus.FORBIDDEN, "AUTH_001", "권한이 없습니다.");
 

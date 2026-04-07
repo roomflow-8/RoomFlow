@@ -93,5 +93,16 @@ public interface ReservationEquipmentRepository extends JpaRepository<Reservatio
 	);
 
 
+	@Query("""
+		select count(re) > 0
+		from ReservationEquipment re
+		join re.reservation r
+		join r.reservationRooms rr
+		join rr.roomSlot rs
+		where re.equipment.equipmentId = :equipmentId
+		  and r.status in ('PENDING', 'CONFIRMED')
+		  and rs.slotStartAt >= :now
+	""")
+	boolean existsFutureReservationByEquipmentId(Long equipmentId, LocalDateTime now);
 
 }

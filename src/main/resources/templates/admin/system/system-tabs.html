@@ -20,35 +20,35 @@
     <div class="w-full rounded-2xl bg-gray-100 p-1.5">
         <nav class="grid grid-cols-6 gap-1.5">
 
-            <a th:href="@{/admin/system/rooms}"
+            <a th:href="@{/admin/rooms}"
                th:classappend="${activeTab == 'rooms'} ? 'bg-white shadow-sm text-black' : 'text-gray-700 hover:bg-white/60'"
                class="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition">
                 <i data-lucide="calculator" class="w-4 h-4"></i>
                 회의실
             </a>
 
-            <a th:href="@{/admin/system/equipments}"
+            <a th:href="@{/admin/equipments}"
                th:classappend="${activeTab == 'equipments'} ? 'bg-white shadow-sm text-black' : 'text-gray-700 hover:bg-white/60'"
                class="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition">
                 <i data-lucide="package" class="w-4 h-4"></i>
                 비품
             </a>
 
-            <a th:href="@{/admin/system/roomslots}"
+            <a th:href="@{/admin/roomslots}"
                th:classappend="${activeTab == 'roomslots'} ? 'bg-white shadow-sm text-black' : 'text-gray-700 hover:bg-white/60'"
                class="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition">
                 <i data-lucide="clock-3" class="w-4 h-4"></i>
                 시간 슬롯
             </a>
 
-            <a th:href="@{/admin/system/notices}"
+            <a th:href="@{/admin/notices}"
                th:classappend="${activeTab == 'notices'} ? 'bg-white shadow-sm text-black' : 'text-gray-700 hover:bg-white/60'"
                class="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition">
                 <i data-lucide="bell" class="w-4 h-4"></i>
                 공지사항
             </a>
 
-            <a th:href="@{/admin/system/policies}"
+            <a th:href="@{/admin/policies}"
                th:classappend="${activeTab == 'policies'} ? 'bg-white shadow-sm text-black' : 'text-gray-700 hover:bg-white/60'"
                class="flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition">
                 <i data-lucide="shield-check" class="w-4 h-4"></i>
