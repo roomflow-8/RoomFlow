@@ -47,10 +47,7 @@ public class ReservationPolicy {
 	}
 
 	// --- 비즈니스 로직 (정책 값 변경) ---
-	public void updateValue(String newValue, String description) {
+	public void updateValue(String newValue) {
 		this.policyValue = newValue;
-		if (description != null) {
-			this.description = description;
-		}
 	}
 }

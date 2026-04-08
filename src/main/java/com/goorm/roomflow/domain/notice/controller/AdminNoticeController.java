@@ -3,7 +3,7 @@ package com.goorm.roomflow.domain.notice.controller;
 import com.goorm.roomflow.domain.notice.dto.request.NoticeReq;
 import com.goorm.roomflow.domain.notice.dto.response.NoticeAdminDetailRes;
 import com.goorm.roomflow.domain.notice.dto.response.NoticeAdminRes;
-import com.goorm.roomflow.domain.notice.service.NoticeAdminService;
+import com.goorm.roomflow.domain.notice.service.AdminNoticeService;
 import com.goorm.roomflow.domain.user.service.CustomUser;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +19,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/admin/notices")
 public class AdminNoticeController {
 
-    private final NoticeAdminService noticeAdminService;
+    private final AdminNoticeService adminNoticeService;
 
     /**
      * 관리자 공지 목록 조회
@@ -31,7 +31,7 @@ public class AdminNoticeController {
             Model model
     ) {
 
-        Page<NoticeAdminRes> noticePage = noticeAdminService.readNoticeList(page - 1, size);
+        Page<NoticeAdminRes> noticePage = adminNoticeService.readNoticeList(page - 1, size);
 
         model.addAttribute("noticePage", noticePage);
         model.addAttribute("notices", noticePage.getContent());
@@ -50,7 +50,7 @@ public class AdminNoticeController {
             Model model
     ) {
 
-        NoticeAdminDetailRes notice = noticeAdminService.readNoticeDetail(noticeId);
+        NoticeAdminDetailRes notice = adminNoticeService.readNoticeDetail(noticeId);
         model.addAttribute("notice", notice);
 
         return "admin/system/notice/notice-detail";
@@ -79,7 +79,7 @@ public class AdminNoticeController {
             RedirectAttributes redirectAttributes
     ) {
         try {
-            noticeAdminService.createNotice(currentUser.getUserId(), request);
+            adminNoticeService.createNotice(currentUser.getUserId(), request);
 
             redirectAttributes.addFlashAttribute("message", "공지사항이 등록되었습니다.");
             redirectAttributes.addFlashAttribute("alertType", "success");
@@ -102,7 +102,7 @@ public class AdminNoticeController {
             RedirectAttributes redirectAttributes
     ) {
         try {
-            NoticeAdminDetailRes notice = noticeAdminService.readNoticeDetail(noticeId);
+            NoticeAdminDetailRes notice = adminNoticeService.readNoticeDetail(noticeId);
             model.addAttribute("notice", notice);
 
             if (!model.containsAttribute("modifyForm")) {
@@ -136,7 +136,7 @@ public class AdminNoticeController {
     ) {
 
         try {
-            noticeAdminService.modifyNotice(currentUser.getUserId(), noticeId, request);
+            adminNoticeService.modifyNotice(currentUser.getUserId(), noticeId, request);
 
             redirectAttributes.addFlashAttribute("message", "공지사항이 수정되었습니다.");
             redirectAttributes.addFlashAttribute("alertType", "success");
@@ -144,7 +144,7 @@ public class AdminNoticeController {
             return "redirect:/admin/notices/" + noticeId;
 
         } catch (BusinessException | IllegalArgumentException e) {
-            NoticeAdminDetailRes notice = noticeAdminService.readNoticeDetail(noticeId);
+            NoticeAdminDetailRes notice = adminNoticeService.readNoticeDetail(noticeId);
             model.addAttribute("notice", notice);
             model.addAttribute("modifyErrorMessage", e.getMessage());
 
@@ -162,7 +162,7 @@ public class AdminNoticeController {
     ) {
 
         try {
-            noticeAdminService.deleteNotice(noticeId);
+            adminNoticeService.deleteNotice(noticeId);
 
             redirectAttributes.addFlashAttribute("message", "공지사항이 삭제되었습니다.");
             redirectAttributes.addFlashAttribute("alertType", "success");

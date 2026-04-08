@@ -38,7 +38,13 @@ public enum ErrorCode {
 	ROOM_SLOT_PAST_NOT_MODIFIABLE(HttpStatus.BAD_REQUEST,"ROOM_007", "과거 슬롯은 수정할 수 없습니다."),
 	ROOM_SLOT_NOT_BELONG_TO_ROOM(HttpStatus.BAD_REQUEST, "ROOM_008","해당 회의실의 슬롯이 아닙니다."),
 	ROOM_SLOT_DATE_NOT_FOUND(HttpStatus.NOT_FOUND,"ROOM_009", "해당 날짜의 슬롯이 존재하지 않습니다."),
+
 	POLICY_NOT_FOUND(HttpStatus.NOT_FOUND, "POLICY_001", "정책 정보를 찾을 수 없습니다."),
+	POLICY_INVALID_TIME_FORMAT(HttpStatus.BAD_REQUEST, "POLICY_002", "시간 형식은 HH:mm 이어야 합니다."),
+	POLICY_TIME_RANGE_INVALID(HttpStatus.BAD_REQUEST, "POLICY_003", "예약 시작 시간은 종료 시간보다 빨라야 합니다."),
+	POLICY_OUT_OF_RANGE(HttpStatus.BAD_REQUEST,"POLICY_004", "정책 값이 허용 범위를 벗어났습니다."),
+	POLICY_NOT_ALLOWED_VALUE(HttpStatus.BAD_REQUEST, "POLICY_005", "허용되지 않은 정책 값입니다."),
+	POLICY_INVALID_VALUE(HttpStatus.BAD_REQUEST, "POLICY_006", "정책 값이 올바르지 않습니다."),
 
 	// 예약
 	RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "RESERVATION_001", "예약을 찾을 수 없습니다."),
@@ -49,7 +55,9 @@ public enum ErrorCode {
 	RESERVATION_EXPIRED(HttpStatus.BAD_REQUEST, "RESERVATION_006", "만료된 예약입니다."),
 	INVALID_RESERVATION_STATUS(HttpStatus.BAD_REQUEST, "RESERVATION_007", "요청을 처리할 수 없는 예약 상태입니다."),
 	RESERVATION_NOT_CONFIRMED(HttpStatus.BAD_REQUEST, "RESERVATION_008", "확정되지 않은 예약입니다."),
-	
+	RESERVATION_START_TIME_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR,"RESERVATION_009","예약 시작 시간을 찾을 수 없습니다."),
+	RESERVATION_CANCEL_DEADLINE_EXPIRED(HttpStatus.BAD_REQUEST, "RESERVATION_010", "예약 취소 가능 시간이 지났습니다."),
+
 	RESERVATION_EQUIPMENT_NOT_FOUND(HttpStatus.BAD_REQUEST, "RESERVATION_009", "비품 예약을 조회할 수 없습니다."),
 	INVALID_RESERVATION_EQUIPMENT(HttpStatus.BAD_REQUEST, "RESERVATION_010", "유효하지 않은 예약ID 입니다."),
 	RESERVATION_EQUIPMENT_CANCELLED(HttpStatus.BAD_REQUEST, "RESERVATION_011", "이미 취소된 비품 예약입니다."),

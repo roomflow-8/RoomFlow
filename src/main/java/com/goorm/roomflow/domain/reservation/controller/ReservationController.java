@@ -215,10 +215,16 @@ public class ReservationController {
 			RedirectAttributes redirectAttributes
 	) {
 
-		reservationService.cancelReservation(currentUser.getUserId(), reservationId, request);
+		try {
+			reservationService.cancelReservation(currentUser.getUserId(), reservationId, request);
 
-		redirectAttributes.addFlashAttribute("alertType", "success");
-		redirectAttributes.addFlashAttribute("message", "예약이 취소되었습니다.");
+			redirectAttributes.addFlashAttribute("alertType", "success");
+			redirectAttributes.addFlashAttribute("message", "예약이 취소되었습니다.");
+		}
+		catch (BusinessException e) {
+			redirectAttributes.addFlashAttribute("alertType", "error");
+			redirectAttributes.addFlashAttribute("message", e.getMessage());
+		}
 
 		return "redirect:/users/reservationlist";
 	}
