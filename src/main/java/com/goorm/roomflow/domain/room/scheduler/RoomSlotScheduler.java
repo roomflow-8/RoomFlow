@@ -1,6 +1,5 @@
 package com.goorm.roomflow.domain.room.scheduler;
 
-import com.goorm.roomflow.domain.room.service.MeetingRoomService;
 import com.goorm.roomflow.domain.room.service.RoomSlotService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

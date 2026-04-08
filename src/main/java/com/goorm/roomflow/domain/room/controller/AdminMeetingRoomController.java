@@ -1,9 +1,9 @@
 package com.goorm.roomflow.domain.room.controller;
 
-import com.goorm.roomflow.domain.room.dto.request.MeetingRoomReq;
-import com.goorm.roomflow.domain.room.dto.response.MeetingRoomAdminRes;
+import com.goorm.roomflow.domain.room.dto.request.AdminMeetingRoomReq;
+import com.goorm.roomflow.domain.room.dto.response.AdminMeetingRoomRes;
 import com.goorm.roomflow.domain.room.entity.RoomStatus;
-import com.goorm.roomflow.domain.room.service.MeetingRoomService;
+import com.goorm.roomflow.domain.room.service.AdminMeetingRoomService;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -17,7 +17,7 @@ import java.util.List;
 @RequestMapping("/admin/rooms")
 public class AdminMeetingRoomController {
 
-    private final MeetingRoomService meetingRoomService;
+    private final AdminMeetingRoomService adminMeetingRoomService;
 
     /**
      * 회의실 목록 조회
@@ -34,13 +34,13 @@ public class AdminMeetingRoomController {
      */
     @PostMapping("/create")
     public String createMeetingRoom(
-            @ModelAttribute("createForm") MeetingRoomReq request,
+            @ModelAttribute("createForm") AdminMeetingRoomReq request,
             Model model,
             RedirectAttributes redirectAttributes
     ) {
 
         try {
-            meetingRoomService.createMeetingRoom(request);
+            adminMeetingRoomService.createMeetingRoom(request);
 
             redirectAttributes.addFlashAttribute("message", "회의실이 생성되었습니다.");
             redirectAttributes.addFlashAttribute("alertType", "success");
@@ -65,13 +65,13 @@ public class AdminMeetingRoomController {
     @PostMapping("/{roomId}/edit")
     public String modifyMeetingRoom(
             @PathVariable Long roomId,
-            @ModelAttribute("modifyForm") MeetingRoomReq request,
+            @ModelAttribute("modifyForm") AdminMeetingRoomReq request,
             Model model,
             RedirectAttributes redirectAttributes
     ) {
 
         try {
-            meetingRoomService.modifyMeetingRoom(roomId, request);
+            adminMeetingRoomService.modifyMeetingRoom(roomId, request);
 
             redirectAttributes.addFlashAttribute("message", "회의실 정보가 수정되었습니다.");
             redirectAttributes.addFlashAttribute("alertType", "success");
@@ -102,7 +102,7 @@ public class AdminMeetingRoomController {
     ) {
 
         try {
-            meetingRoomService.changeMeetingRoomStatus(roomId, targetStatus);
+            adminMeetingRoomService.changeMeetingRoomStatus(roomId, targetStatus);
 
             redirectAttributes.addFlashAttribute("message", "회의실 상태가 변경되었습니다.");
             redirectAttributes.addFlashAttribute("alertType", "success");
@@ -118,7 +118,7 @@ public class AdminMeetingRoomController {
 
 
     private void loadRoomList(Model model) {
-        List<MeetingRoomAdminRes> rooms = meetingRoomService.readMeetingRoomAdminList();
+        List<AdminMeetingRoomRes> rooms = adminMeetingRoomService.readMeetingRoomAdminList();
         model.addAttribute("rooms", rooms);
     }
 
@@ -130,14 +130,14 @@ public class AdminMeetingRoomController {
     private void prepareCreateForm(Model model) {
         if (!model.containsAttribute("createForm")) {
             model.addAttribute("createForm",
-                    new MeetingRoomReq(null, 0, null, null, null, null));
+                    new AdminMeetingRoomReq(null, 0, null, null, null, null));
         }
     }
 
     private void prepareModifyForm(Model model) {
         if (!model.containsAttribute("modifyForm")) {
             model.addAttribute("modifyForm",
-                    new MeetingRoomReq(null, 0, null, null, null, null));
+                    new AdminMeetingRoomReq(null, 0, null, null, null, null));
         }
     }
 }

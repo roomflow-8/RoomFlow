@@ -1,7 +1,7 @@
 package com.goorm.roomflow.domain.reservation.service;
 
-import com.goorm.roomflow.domain.reservation.dto.request.ReservationPolicyUpdateReq;
-import com.goorm.roomflow.domain.reservation.dto.response.ReservationPolicyAdminRes;
+import com.goorm.roomflow.domain.reservation.dto.request.AdminReservationPolicyUpdateReq;
+import com.goorm.roomflow.domain.reservation.dto.response.AdminReservationPolicyRes;
 import com.goorm.roomflow.domain.reservation.entity.PolicyValueType;
 import com.goorm.roomflow.domain.reservation.entity.ReservationPolicy;
 import com.goorm.roomflow.domain.reservation.entity.ReservationPolicyKey;
@@ -27,7 +27,7 @@ public class AdminReservationPolicyServiceImpl implements AdminReservationPolicy
 
 
     @Override
-    public List<ReservationPolicyAdminRes> getPolicyList() {
+    public List<AdminReservationPolicyRes> getPolicyList() {
         log.info("정책 관리 목록 조회");
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
@@ -36,7 +36,7 @@ public class AdminReservationPolicyServiceImpl implements AdminReservationPolicy
                 .map(policy -> {
                     ReservationPolicyKey key = ReservationPolicyKey.from(policy.getPolicyKey());
 
-                    return new ReservationPolicyAdminRes(
+                    return new AdminReservationPolicyRes(
                             policy.getPolicyId(),
                             policy.getPolicyKey(),
                             policy.getPolicyValue(),
@@ -51,7 +51,7 @@ public class AdminReservationPolicyServiceImpl implements AdminReservationPolicy
 
     @Override
     @Transactional
-    public void updatePolicy(Long policyId, ReservationPolicyUpdateReq policyUpdateReq) {
+    public void updatePolicy(Long policyId, AdminReservationPolicyUpdateReq policyUpdateReq) {
 
         log.info("정책 수정 시작 - policyId={}", policyId);
 

@@ -1,6 +1,6 @@
 package com.goorm.roomflow.domain.reservation.controller;
 
-import com.goorm.roomflow.domain.reservation.dto.request.ReservationPolicyUpdateReq;
+import com.goorm.roomflow.domain.reservation.dto.request.AdminReservationPolicyUpdateReq;
 import com.goorm.roomflow.domain.reservation.service.AdminReservationPolicyService;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,7 @@ public class AdminReservationPolicyController {
     @PostMapping("/{policyId}/edit")
     public String updatePolicy(
             @PathVariable Long policyId,
-            @ModelAttribute ReservationPolicyUpdateReq policyUpdateReq,
+            @ModelAttribute AdminReservationPolicyUpdateReq policyUpdateReq,
             RedirectAttributes redirectAttributes
     ) {
         try {

@@ -1,10 +1,8 @@
 package com.goorm.roomflow.domain.room.dto.response;
 
-import com.querydsl.core.annotations.QueryProjection;
-
 import java.time.LocalDateTime;
 
-public record RoomSlotAdminRes(
+public record AdminRoomSlotRes(
         Long roomSlotId,
         LocalDateTime slotStartAt,
         LocalDateTime slotEndAt,

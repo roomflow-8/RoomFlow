@@ -4,8 +4,8 @@ package com.goorm.roomflow.domain.room.repository;
 import com.goorm.roomflow.domain.reservation.entity.QReservation;
 import com.goorm.roomflow.domain.reservation.entity.QReservationRoom;
 import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
-import com.goorm.roomflow.domain.room.dto.response.RoomSlotAdminRes;
-import com.goorm.roomflow.domain.room.dto.response.RoomSlotSummaryRes;
+import com.goorm.roomflow.domain.room.dto.response.AdminRoomSlotRes;
+import com.goorm.roomflow.domain.room.dto.response.AdminRoomSlotSummaryRes;
 import com.goorm.roomflow.domain.room.entity.MeetingRoom;
 import com.goorm.roomflow.domain.room.entity.QRoomSlot;
 import com.querydsl.core.types.Projections;
@@ -29,13 +29,13 @@ public class RoomSlotQueryRepositoryImpl implements RoomSlotQueryRepository {
     private final QReservation reservation = QReservation.reservation;
 
     @Override
-    public List<RoomSlotAdminRes> findAdminRoomSlots(Long roomId, LocalDate date) {
+    public List<AdminRoomSlotRes> findAdminRoomSlots(Long roomId, LocalDate date) {
         LocalDateTime startAt = date.atStartOfDay();
         LocalDateTime endAt = date.plusDays(1).atStartOfDay();
 
         return queryFactory
                 .select(Projections.constructor(
-                        RoomSlotAdminRes.class,
+                        AdminRoomSlotRes.class,
                         roomSlot.roomSlotId,
                         roomSlot.slotStartAt,
                         roomSlot.slotEndAt,
@@ -61,12 +61,12 @@ public class RoomSlotQueryRepositoryImpl implements RoomSlotQueryRepository {
     }
 
     @Override
-    public RoomSlotSummaryRes findRoomSlotSummary(MeetingRoom meetingRoom, LocalDate selectedDate) {
+    public AdminRoomSlotSummaryRes findRoomSlotSummary(MeetingRoom meetingRoom, LocalDate selectedDate) {
         LocalDateTime now = LocalDateTime.now();
 
-        List<RoomSlotAdminRes> futureSlots = queryFactory
+        List<AdminRoomSlotRes> futureSlots = queryFactory
                 .select(Projections.constructor(
-                        RoomSlotAdminRes.class,
+                        AdminRoomSlotRes.class,
                         roomSlot.roomSlotId,
                         roomSlot.slotStartAt,
                         roomSlot.slotEndAt,
@@ -90,7 +90,7 @@ public class RoomSlotQueryRepositoryImpl implements RoomSlotQueryRepository {
 
         int totalSlotCount = futureSlots.size();
         int reservedSlotCount = (int) futureSlots.stream()
-                .filter(RoomSlotAdminRes::reserved)
+                .filter(AdminRoomSlotRes::reserved)
                 .count();
         int availableSlotCount = (int) futureSlots.stream()
                 .filter(slot -> slot.active() && !slot.reserved())
@@ -99,7 +99,7 @@ public class RoomSlotQueryRepositoryImpl implements RoomSlotQueryRepository {
                 .filter(slot -> !slot.active() && !slot.reserved())
                 .count();
 
-        return new RoomSlotSummaryRes(
+        return new AdminRoomSlotSummaryRes(
                 meetingRoom.getRoomId(),
                 meetingRoom.getRoomName(),
                 meetingRoom.getStatus(),

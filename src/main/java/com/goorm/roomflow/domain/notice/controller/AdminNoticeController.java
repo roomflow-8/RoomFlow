@@ -1,8 +1,8 @@
 package com.goorm.roomflow.domain.notice.controller;
 
 import com.goorm.roomflow.domain.notice.dto.request.NoticeReq;
-import com.goorm.roomflow.domain.notice.dto.response.NoticeAdminDetailRes;
-import com.goorm.roomflow.domain.notice.dto.response.NoticeAdminRes;
+import com.goorm.roomflow.domain.notice.dto.response.AdminNoticeDetailRes;
+import com.goorm.roomflow.domain.notice.dto.response.AdminNoticeRes;
 import com.goorm.roomflow.domain.notice.service.AdminNoticeService;
 import com.goorm.roomflow.domain.user.service.CustomUser;
 import com.goorm.roomflow.global.exception.BusinessException;
@@ -31,7 +31,7 @@ public class AdminNoticeController {
             Model model
     ) {
 
-        Page<NoticeAdminRes> noticePage = adminNoticeService.readNoticeList(page - 1, size);
+        Page<AdminNoticeRes> noticePage = adminNoticeService.readNoticeList(page - 1, size);
 
         model.addAttribute("noticePage", noticePage);
         model.addAttribute("notices", noticePage.getContent());
@@ -50,7 +50,7 @@ public class AdminNoticeController {
             Model model
     ) {
 
-        NoticeAdminDetailRes notice = adminNoticeService.readNoticeDetail(noticeId);
+        AdminNoticeDetailRes notice = adminNoticeService.readNoticeDetail(noticeId);
         model.addAttribute("notice", notice);
 
         return "admin/system/notice/notice-detail";
@@ -102,7 +102,7 @@ public class AdminNoticeController {
             RedirectAttributes redirectAttributes
     ) {
         try {
-            NoticeAdminDetailRes notice = adminNoticeService.readNoticeDetail(noticeId);
+            AdminNoticeDetailRes notice = adminNoticeService.readNoticeDetail(noticeId);
             model.addAttribute("notice", notice);
 
             if (!model.containsAttribute("modifyForm")) {
@@ -144,7 +144,7 @@ public class AdminNoticeController {
             return "redirect:/admin/notices/" + noticeId;
 
         } catch (BusinessException | IllegalArgumentException e) {
-            NoticeAdminDetailRes notice = adminNoticeService.readNoticeDetail(noticeId);
+            AdminNoticeDetailRes notice = adminNoticeService.readNoticeDetail(noticeId);
             model.addAttribute("notice", notice);
             model.addAttribute("modifyErrorMessage", e.getMessage());
 

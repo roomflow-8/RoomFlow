@@ -1,8 +1,7 @@
 package com.goorm.roomflow.domain.room.controller;
 
-import com.goorm.roomflow.domain.room.dto.request.CreateRoomSlotsReq;
+import com.goorm.roomflow.domain.room.dto.request.AdminRoomSlotsReq;
 import com.goorm.roomflow.domain.room.dto.response.MeetingRoomListRes;
-import com.goorm.roomflow.domain.room.repository.RoomSlotRepository;
 import com.goorm.roomflow.domain.room.service.MeetingRoomService;
 import com.goorm.roomflow.domain.room.service.RoomSlotService;
 import com.goorm.roomflow.global.code.SuccessCode;
@@ -38,7 +37,7 @@ public class MeetingRoomRestController {
 
     @Operation(summary = "날짜별 회의실 시간 생성")
     @PostMapping("/rooms/slots")
-    public ResponseEntity<ApiResponse<Void>> createRoomSlots(@RequestBody CreateRoomSlotsReq request) {
+    public ResponseEntity<ApiResponse<Void>> createRoomSlots(@RequestBody AdminRoomSlotsReq request) {
 
         roomSlotService.generateDailySlotsForRooms(request.meetingRoomIds(), request.targetDate());
 

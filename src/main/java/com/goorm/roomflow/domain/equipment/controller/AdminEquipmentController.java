@@ -1,8 +1,8 @@
 package com.goorm.roomflow.domain.equipment.controller;
 
-import com.goorm.roomflow.domain.equipment.dto.request.EquipmentReq;
+import com.goorm.roomflow.domain.equipment.dto.request.AdminEquipmentReq;
 import com.goorm.roomflow.domain.equipment.entity.EquipmentStatus;
-import com.goorm.roomflow.domain.equipment.service.EquipmentService;
+import com.goorm.roomflow.domain.equipment.service.AdminEquipmentService;
 import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -15,7 +15,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/admin/equipments")
 public class AdminEquipmentController {
 
-    private final EquipmentService equipmentService;
+    private final AdminEquipmentService adminEquipmentService;
 
     /**
      * 비품 목록 조회
@@ -32,12 +32,12 @@ public class AdminEquipmentController {
      */
     @PostMapping("/create")
     public String createEquipment(
-            @ModelAttribute("createForm") EquipmentReq request,
+            @ModelAttribute("createForm") AdminEquipmentReq request,
             Model model,
             RedirectAttributes redirectAttributes
     ) {
         try {
-            equipmentService.createEquipment(request);
+            adminEquipmentService.createEquipment(request);
 
             redirectAttributes.addFlashAttribute("message", "비품이 등록되었습니다.");
             redirectAttributes.addFlashAttribute("alertType", "success");
@@ -58,13 +58,13 @@ public class AdminEquipmentController {
     @PostMapping("/{equipmentId}/edit")
     public String modifyEquipment(
             @PathVariable Long equipmentId,
-            @ModelAttribute("modifyForm") EquipmentReq request,
+            @ModelAttribute("modifyForm") AdminEquipmentReq request,
             Model model,
             RedirectAttributes redirectAttributes
     ) {
 
         try {
-            equipmentService.modifyEquipment(equipmentId, request);
+            adminEquipmentService.modifyEquipment(equipmentId, request);
 
             redirectAttributes.addFlashAttribute("message", "비품 정보가 수정되었습니다.");
             redirectAttributes.addFlashAttribute("alertType", "success");
@@ -93,7 +93,7 @@ public class AdminEquipmentController {
             Model model
     ) {
         try {
-            equipmentService.changeEquipmentStatus(equipmentId, status);
+            adminEquipmentService.changeEquipmentStatus(equipmentId, status);
 
             redirectAttributes.addFlashAttribute("message", "비품 상태가 변경되었습니다.");
             redirectAttributes.addFlashAttribute("alertType", "success");
@@ -107,7 +107,7 @@ public class AdminEquipmentController {
     }
 
     private void loadEquipmentList(Model model) {
-        model.addAttribute("equipments", equipmentService.readEquipmentAdminList());
+        model.addAttribute("equipments", adminEquipmentService.readEquipmentAdminList());
     }
 
     private void initForms(Model model) {
@@ -118,14 +118,14 @@ public class AdminEquipmentController {
     private void prepareCreateForm(Model model) {
         if (!model.containsAttribute("createForm")) {
             model.addAttribute("createForm",
-                    new EquipmentReq(null, 0, null, 0, null, null, null));
+                    new AdminEquipmentReq(null, 0, null, 0, null, null, null));
         }
     }
 
     private void prepareModifyForm(Model model) {
         if (!model.containsAttribute("modifyForm")) {
             model.addAttribute("modifyForm",
-                    new EquipmentReq(null, 0, null, 0, null, null, null));
+                    new AdminEquipmentReq(null, 0, null, 0, null, null, null));
         }
     }
 
