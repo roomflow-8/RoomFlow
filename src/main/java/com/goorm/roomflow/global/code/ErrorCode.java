@@ -90,7 +90,14 @@ public enum ErrorCode {
 	REJECT_CARD_COMPANY(HttpStatus.BAD_REQUEST, "PAYMENT_010", "카드사에서 결제를 거부했습니다. 해당 카드사에 문의해주세요."),
 	UNAUTHORIZED_KEY(HttpStatus.UNAUTHORIZED, "PAYMENT_011", "API키를 다시 확인해주세요."),
 	NOT_FOUND_PAYMENT_SESSION(HttpStatus.NOT_FOUND, "PAYMENT_012", "결제 시간이 만료되어 결제 진행 데이터가 존재하지 않습니다."),
-	FORBIDDEN_REQUEST(HttpStatus.FORBIDDEN, "PAYMENT_013", "API키 또는 주문번호를 다시 확인해주세요.");
+	FORBIDDEN_REQUEST(HttpStatus.FORBIDDEN, "PAYMENT_013", "API키 또는 주문번호를 다시 확인해주세요."),
+
+	// 휴무일 관련
+	HOLIDAY_NOT_FOUND(HttpStatus.NOT_FOUND, "HOLIDAY_001", "휴무일 정보를 찾을 수 없습니다."),
+	DUPLICATE_HOLIDAY(HttpStatus.BAD_REQUEST, "HOLIDAY_002", "이미 등록된 휴무일입니다."),
+	HOLIDAY_RESERVATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "HOLIDAY_003", "해당 날짜는 휴무일로 예약할 수 없습니다."),
+	INVALID_HOLIDAY_REQUEST(HttpStatus.BAD_REQUEST, "HOLIDAY_004", "휴무일 요청 값이 올바르지 않습니다."),
+	HOLIDAY_API_FAILED(HttpStatus.BAD_GATEWAY, "HOLIDAY_005", "공휴일 API 연동에 실패했습니다.");
 
 	private final HttpStatus status;
 	private final String code;

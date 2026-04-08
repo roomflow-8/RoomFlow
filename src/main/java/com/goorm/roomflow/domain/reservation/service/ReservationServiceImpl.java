@@ -4,6 +4,7 @@ import com.goorm.roomflow.domain.equipment.dto.EquipmentAvailabilityDto;
 import com.goorm.roomflow.domain.equipment.entity.Equipment;
 import com.goorm.roomflow.domain.equipment.entity.EquipmentStatus;
 import com.goorm.roomflow.domain.equipment.repository.EquipmentRepository;
+import com.goorm.roomflow.domain.holiday.service.AdminHolidayService;
 import com.goorm.roomflow.domain.reservation.dto.request.*;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentItem;
 import com.goorm.roomflow.domain.reservation.dto.response.EquipmentReservationRes;
@@ -56,6 +57,7 @@ public class ReservationServiceImpl implements ReservationService {
 	private final UserJpaRepository userRepository;
 	private final ApplicationEventPublisher eventPublisher;
 	private final ReservationPolicyRepository reservationPolicyRepository;
+	private final AdminHolidayService adminHolidayService;
 
 	@Override
 	public Reservation getReservation(Long userId, Long reservationId) {
@@ -187,6 +189,7 @@ public class ReservationServiceImpl implements ReservationService {
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
+
 		// 1. 회의실 조회
 		MeetingRoom meetingRoom = meetingRoomRepository.findById(request.roomId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND));
@@ -216,6 +219,8 @@ public class ReservationServiceImpl implements ReservationService {
 		}
 
 		LocalDate reservationDate = roomSlots.getFirst().getSlotStartAt().toLocalDate();
+
+		adminHolidayService.validateHoliday(reservationDate);
 
 		// 4. 금액 계산
 		BigDecimal totalAmount = calcTotalAmount(meetingRoom.getHourlyPrice(), roomSlots);
