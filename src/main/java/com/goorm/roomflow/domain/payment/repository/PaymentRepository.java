@@ -27,4 +27,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 			Long reservationId, List<PaymentStatus> statuses);
 
 	boolean existsByOrderId(String orderId);
+
+	@EntityGraph(attributePaths = {"user"})
+	List<Payment> findAllByStatusOrderByApprovedAtDesc(
+			PaymentStatus status
+	);
+
+	long countByStatus(PaymentStatus status);
 }
