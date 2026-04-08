@@ -65,7 +65,9 @@
 
     </div>
 </main>
-
+<script th:inline="javascript">
+    const holidays = /*[[${holidays}]]*/ [];
+</script>
 <script th:src="@{/js/meeting-room.js}"></script>
 </body>
 </html>
