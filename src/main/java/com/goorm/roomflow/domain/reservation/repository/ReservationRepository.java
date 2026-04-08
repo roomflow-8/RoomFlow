@@ -50,4 +50,16 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     @EntityGraph(attributePaths = {"user"})
     Optional<Reservation> findByReservationId(Long reservationId);
+
+
+    @Query("""
+        select distinct r
+        from Reservation r
+        join fetch r.user u
+        join fetch r.reservationRooms rr
+        join fetch rr.roomSlot rs
+        join fetch r.meetingRoom mr
+        where r.reservationId = :reservationId
+    """)
+    Optional<Reservation> findByIdWithAll(Long reservationId);
 }

@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class NoticeAdminServiceImpl implements NoticeAdminService {
+public class AdminNoticeServiceImpl implements AdminNoticeService {
 
     private final NoticeRepository noticeRepository;
     private final UserJpaRepository userRepository;

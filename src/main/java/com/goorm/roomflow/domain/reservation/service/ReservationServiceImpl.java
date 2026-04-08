@@ -13,6 +13,7 @@ import com.goorm.roomflow.domain.reservation.entity.*;
 import com.goorm.roomflow.domain.reservation.event.ReservationStatusChangedEvent;
 import com.goorm.roomflow.domain.reservation.mapper.ReservationRoomMapper;
 import com.goorm.roomflow.domain.reservation.repository.ReservationEquipmentRepository;
+import com.goorm.roomflow.domain.reservation.repository.ReservationPolicyRepository;
 import com.goorm.roomflow.domain.reservation.repository.ReservationRepository;
 import com.goorm.roomflow.domain.reservation.repository.ReservationRoomRepository;
 import com.goorm.roomflow.domain.room.entity.MeetingRoom;
@@ -54,6 +55,7 @@ public class ReservationServiceImpl implements ReservationService {
 	private final EquipmentRepository equipmentRepository;
 	private final UserJpaRepository userRepository;
 	private final ApplicationEventPublisher eventPublisher;
+	private final ReservationPolicyRepository reservationPolicyRepository;
 
 	@Override
 	public Reservation getReservation(Long userId, Long reservationId) {
@@ -608,7 +610,7 @@ public class ReservationServiceImpl implements ReservationService {
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
 		// 예약 조회
-		Reservation reservation = reservationRepository.findByIdWithUserAndMeetingRoom(reservationId)
+		Reservation reservation = reservationRepository.findByIdWithAll(reservationId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_NOT_FOUND));
 
 		if (user.getRole().equals(UserRole.USER)
@@ -618,6 +620,8 @@ public class ReservationServiceImpl implements ReservationService {
 
 			throw new BusinessException(ErrorCode.RESERVATION_FORBIDDEN);
 		}
+
+		validateCancelDeadline(reservation);
 
 		ReservationStatus fromStatus = reservation.getStatus();
 
@@ -1144,6 +1148,29 @@ public class ReservationServiceImpl implements ReservationService {
 					totalAmount
 			);
 
+	}
+
+	private void validateCancelDeadline(Reservation reservation) {
+		int cancelDeadlineMinutes = getCancelDeadlineMinutes();
+
+		LocalDateTime reservationStartAt = reservation.getReservationRooms().stream()
+				.map(reservationRoom -> reservationRoom.getRoomSlot().getSlotStartAt())
+				.min(LocalDateTime::compareTo)
+				.orElseThrow(() -> new BusinessException(ErrorCode.RESERVATION_START_TIME_NOT_FOUND));
+
+		LocalDateTime deadline = reservationStartAt.minusMinutes(cancelDeadlineMinutes);
+
+		if (LocalDateTime.now().isAfter(deadline)) {
+			throw new BusinessException(ErrorCode.RESERVATION_CANCEL_DEADLINE_EXPIRED);
+		}
+	}
+
+	private int getCancelDeadlineMinutes() {
+		return Integer.parseInt(
+				reservationPolicyRepository.findByPolicyKey("CANCEL_DEADLINE_MINUTES")
+						.orElseThrow(() -> new BusinessException(ErrorCode.POLICY_NOT_FOUND))
+						.getPolicyValue()
+		);
 	}
 }
 

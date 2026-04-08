@@ -10,4 +10,6 @@ public interface ReservationPolicyRepository extends JpaRepository<ReservationPo
     Optional<ReservationPolicy> findByPolicyKey(String policyKey);
 
     List<ReservationPolicy> findByPolicyKeyIn(List<String> policyKeys);
+
+    List<ReservationPolicy> findAllByOrderByPolicyIdAsc();
 }
