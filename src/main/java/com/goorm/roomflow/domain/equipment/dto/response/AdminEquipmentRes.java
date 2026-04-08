@@ -5,7 +5,7 @@ import com.goorm.roomflow.domain.equipment.entity.EquipmentStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public record EquipmentAdminRes(
+public record AdminEquipmentRes(
         Long equipmentId,
         String equipmentName,
         Integer totalStock,

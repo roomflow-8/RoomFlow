@@ -5,7 +5,7 @@ import com.goorm.roomflow.domain.room.entity.RoomStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public record MeetingRoomAdminRes(
+public record AdminMeetingRoomRes(
         Long roomId,
         String roomName,
         int capacity,

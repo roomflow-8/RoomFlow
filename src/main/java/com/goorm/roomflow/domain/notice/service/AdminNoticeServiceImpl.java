@@ -1,8 +1,8 @@
 package com.goorm.roomflow.domain.notice.service;
 
 import com.goorm.roomflow.domain.notice.dto.request.NoticeReq;
-import com.goorm.roomflow.domain.notice.dto.response.NoticeAdminDetailRes;
-import com.goorm.roomflow.domain.notice.dto.response.NoticeAdminRes;
+import com.goorm.roomflow.domain.notice.dto.response.AdminNoticeDetailRes;
+import com.goorm.roomflow.domain.notice.dto.response.AdminNoticeRes;
 import com.goorm.roomflow.domain.notice.entity.Notice;
 import com.goorm.roomflow.domain.notice.mapper.NoticeMapper;
 import com.goorm.roomflow.domain.notice.repository.NoticeRepository;
@@ -34,7 +34,7 @@ public class AdminNoticeServiceImpl implements AdminNoticeService {
      * 관리자 공지 목록 조회
      */
     @Override
-    public Page<NoticeAdminRes> readNoticeList(int page, int size) {
+    public Page<AdminNoticeRes> readNoticeList(int page, int size) {
 
         log.info("[공지사항-관리자] 목록 조회 시작 - page={}, size={}", page, size);
 
@@ -47,7 +47,7 @@ public class AdminNoticeServiceImpl implements AdminNoticeService {
                 )
         );
 
-        Page<NoticeAdminRes> noticeAdminList = noticeRepository.findAll(pageable)
+        Page<AdminNoticeRes> noticeAdminList = noticeRepository.findAll(pageable)
                 .map(noticeMapper::toNoticeAdminRes);
 
         log.info("[공지사항-관리자] 목록 조회 완료 - totalElements={}", noticeAdminList.getTotalElements());
@@ -60,7 +60,7 @@ public class AdminNoticeServiceImpl implements AdminNoticeService {
      */
 
     @Override
-    public NoticeAdminDetailRes readNoticeDetail(Long noticeId) {
+    public AdminNoticeDetailRes readNoticeDetail(Long noticeId) {
 
         log.info("[공지사항-관리자] 상세 조회 시작 - noticeId={}", noticeId);
         Notice notice = loadNotice(noticeId);

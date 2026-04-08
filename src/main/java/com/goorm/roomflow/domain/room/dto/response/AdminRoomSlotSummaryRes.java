@@ -4,7 +4,7 @@ import com.goorm.roomflow.domain.room.entity.RoomStatus;
 
 import java.time.LocalDate;
 
-public record RoomSlotSummaryRes(
+public record AdminRoomSlotSummaryRes(
         Long roomId,
         String roomName,
         RoomStatus roomStatus,

@@ -1,6 +1,6 @@
 package com.goorm.roomflow.domain.reservation.dto.response;
 
-public record ReservationPolicyAdminRes (
+public record AdminReservationPolicyRes(
         Long policyId,
         String policyKey,
         String policyValue,

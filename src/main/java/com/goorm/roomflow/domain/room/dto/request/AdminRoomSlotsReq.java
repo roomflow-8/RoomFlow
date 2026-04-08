@@ -6,7 +6,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Builder
-public record CreateRoomSlotsReq (
+public record AdminRoomSlotsReq(
         LocalDate targetDate,
         List<Long> meetingRoomIds
 ) {

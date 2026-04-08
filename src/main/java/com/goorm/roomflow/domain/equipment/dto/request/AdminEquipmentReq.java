@@ -6,7 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 
-public record EquipmentReq(
+public record AdminEquipmentReq(
 
         @NotBlank(message = "비품명을 입력해주세요.")
         @Size(max = 100, message = "비품명은 100자 이하여야 합니다.")

@@ -4,7 +4,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
 
-public record RoomSlotStatusReq(
+public record AdminRoomSlotDateStatusReq(
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         LocalDate date,
         boolean active

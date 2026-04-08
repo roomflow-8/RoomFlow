@@ -2,7 +2,7 @@ package com.goorm.roomflow.domain.notice.dto.response;
 
 import java.time.LocalDateTime;
 
-public record NoticeAdminRes(
+public record AdminNoticeRes(
         Long noticeId,
         String title,
         boolean pinned,
