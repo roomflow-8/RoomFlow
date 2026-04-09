@@ -29,7 +29,9 @@ ENV TZ=Asia/Seoul
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # 비루트 사용자로 실행 (보안)
-RUN addgroup --system spring && adduser --system --ingroup spring spring
+RUN addgroup --system spring && adduser --system --ingroup spring spring \
+    && mkdir -p /app/logs \
+    && chown -R spring:spring /app/logs
 USER spring
 
 # 빌드된 JAR 복사
