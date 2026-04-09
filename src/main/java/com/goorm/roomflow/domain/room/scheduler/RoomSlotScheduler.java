@@ -15,7 +15,7 @@ public class RoomSlotScheduler {
 
     private final RoomSlotService roomSlotService;
 
-    @Scheduled(cron = "0 50 23 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
     public void generateOneMonthLaterSlot() {
         LocalDate targetDate = LocalDate.now().plusMonths(1);
 
