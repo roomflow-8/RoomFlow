@@ -12,10 +12,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.util.HashMap;
@@ -59,10 +63,11 @@ public class SecurityConfig {
 								"/users/email/send", "/users/email/verify",
 								"/oauth2/**", "/login/oauth2/**",
 								"/swagger-ui/**", "/v3/api-docs/**",
-								"/css/**", "/js/**", "/images/**", "/reservations/**", "/api/v1/**"
+								"/css/**", "/js/**", "/images/**", "/api/v1/**",
+								"/actuator/**"
 						).permitAll()
 						.requestMatchers(HttpMethod.GET, "/rooms/**", "/notices/**").permitAll()
-						.requestMatchers("/users/mypage/**", "/users/reservationlist", "/admin/**").authenticated()
+						.requestMatchers("/users/mypage/**", "/users/reservationlist", "/admin/**", "/reservations/**").authenticated()
 						.anyRequest().authenticated()
 				)
 				.formLogin(form -> form
@@ -96,6 +101,15 @@ public class SecurityConfig {
 		return httpSecurity.build();
 	}
 
+	@Bean
+	public UserDetailsService actuatorUserDetailsService() {
+		UserDetails actuator = User.withUsername("actuator")
+				.password("{noop}actuator123")
+				.roles("ACTUATOR")
+				.build();
+
+		return new InMemoryUserDetailsManager(actuator);
+	}
 
 	// 구글 최초 회원가입 시 - refreshToken을 받기 위한 설정
 	@Bean
