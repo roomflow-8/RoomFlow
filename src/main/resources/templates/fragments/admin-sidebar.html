@@ -12,10 +12,11 @@
 
     <nav class="flex flex-col gap-2">
 
-        <a th:href="@{/admin}"
-           th:classappend="${currentMenu == 'dashboard'} ? 'bg-black text-white hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
+
+        <a th:href="@{/admin/sales}"
+           th:classappend="${currentMenu == 'sales'} ? 'bg-black text-white hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
            class="px-4 py-3 text-sm font-medium rounded-lg transition">
-            대시보드
+            매출관리
         </a>
 
         <a th:href="@{/admin/users}"
@@ -36,11 +37,6 @@
             예약관리
         </a>
 
-        <a th:href="@{/admin/sales}"
-           th:classappend="${currentMenu == 'sales'} ? 'bg-black text-white hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-50'"
-           class="px-4 py-3 text-sm font-medium rounded-lg transition">
-            매출관리
-        </a>
 
     </nav>
 </aside>
