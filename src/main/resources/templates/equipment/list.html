@@ -10,7 +10,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" type="text/css" th:href="@{/css/equip-list.css}">
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel='stylesheet' href='https://cdn-uicons.flaticon.com/4.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
+    <link rel='stylesheet'
+          href='https://cdn-uicons.flaticon.com/4.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
     <link rel="stylesheet" th:href="@{/css/style.css}">
 </head>
 <body class="bg-gray-50 min-h-screen pb-24 xl:pb-0">
@@ -85,8 +86,14 @@
                             <div class="flex items-start justify-between">
                                 <div class="flex items-center gap-3 flex-1">
                                     <div class="p-3 bg-blue-100 rounded-lg">
-                                        <i th:attr="data-lucide=${equipment.equipmentName.toLowerCase().contains('노트북') ? 'laptop' : 'package'}"
-                                           class="w-6 h-6 text-blue-600"></i>
+                                        <img th:if="${equipment.imageUrl != null and !#strings.isEmpty(equipment.imageUrl)}"
+                                             th:src="${equipment.imageUrl}" class="w-32 h-32 object-cover">
+                                            <span th:unless="${equipment.imageUrl != null and !#strings.isEmpty(equipment.imageUrl)}" class="text-gray-400 text-sm">
+                                               <i th:attr="data-lucide=${equipment.equipmentName.toLowerCase().contains('노트북') ? 'laptop' : 'package'}"
+                                                  class="w-6 h-6 text-blue-600"></i>
+                                        </span>
+
+
                                     </div>
                                     <div class="flex-1">
                                         <h3 class="text-lg font-semibold text-gray-900"
@@ -242,7 +249,6 @@
             <div class="flex justify-between items-start">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900">비품 상세 정보</h2>
-                    <p class="text-sm text-gray-500 mt-1">선택한 비품의 상세 정보를 확인할 수 있습니다.</p>
                 </div>
                 <button onclick="closeDetail()" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <i data-lucide="x" class="w-6 h-6"></i>

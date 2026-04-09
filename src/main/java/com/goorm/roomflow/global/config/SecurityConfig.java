@@ -35,18 +35,6 @@ public class SecurityConfig {
 	private final FormLoginSuccessHandler formLoginSuccessHandler;
 	private final FormLoginFailureHandler formLoginFailureHandler;
 
-	/**
-	 * 1.제거
-	 * "/rooms/**","/api/**" //permitAll 제거
-	 * <p>
-	 * 2. 추가
-	 * .requestMatchers(HttpMethod.GET, "/rooms/**").permitAll()
-	 * .requestMatchers("/reservations/**", "/users/mypage/**", "/users/reservationlist").authenticated()
-	 * <p>
-	 * 3. you will gonna need it
-	 * .requestMatchers("/admin/**").hasRole("ADMIN") //admin 있을시 추가
-	 *
-	 */
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity httpSecurity,
@@ -68,7 +56,7 @@ public class SecurityConfig {
 								"/actuator/**"
 						).permitAll()
 						.requestMatchers(HttpMethod.GET, "/rooms/**", "/notices/**").permitAll()
-						.requestMatchers("/users/mypage/**", "/users/reservationlist", "/admin/**", "/reservations/**").authenticated()
+						.requestMatchers("/users/mypage/**", "/users/reservationlist", "/reservations/**").authenticated()
 						.anyRequest().authenticated()
 				)
 				.formLogin(form -> form

@@ -20,21 +20,6 @@ import java.util.Collections;
 public class CustomUserDetailsService implements UserDetailsService {
 
 	private final UserJpaRepository userJpaRepository;
-/*
-	@Override
-	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-		User user = userJpaRepository.findByEmail(email);
-
-		if (user == null || user.isDeleted()) {
-			throw new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email);
-		}
-
-		return new org.springframework.security.core.userdetails.User(
-				user.getEmail(),
-				user.getPassword(),
-				Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-		);
-	}*/
 
 
 	@Override
