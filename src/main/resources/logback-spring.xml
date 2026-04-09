@@ -3,7 +3,7 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="myapp"/>
-    <property name="LOG_PATH" value="./logs"/>
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path" defaultValue="/app/logs"/>
     <property name="LOG_PATTERN"
               value="[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%-5level] [%thread] %logger{40} - %msg%n"/>
 
