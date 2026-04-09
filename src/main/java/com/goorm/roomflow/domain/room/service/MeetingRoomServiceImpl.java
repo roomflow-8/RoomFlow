@@ -1,5 +1,6 @@
 package com.goorm.roomflow.domain.room.service;
 
+import com.goorm.roomflow.domain.holiday.service.HolidayService;
 import com.goorm.roomflow.domain.room.dto.response.*;
 import com.goorm.roomflow.domain.room.entity.MeetingRoom;
 import com.goorm.roomflow.domain.room.entity.RoomSlot;
@@ -28,6 +29,7 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
 
     private final MeetingRoomMapper meetingRoomMapper;
     private final RoomSlotMapper roomSlotMapper;
+    private final HolidayService HolidayService;
 
     /**
      * 날짜별 회의실 목록 조회
@@ -42,8 +44,7 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
         log.info("회의실 목록 조회 시작: date={}", date);
 
         // 1. 조회 가능한 회의실 목록 조회
-        List<MeetingRoom> meetingRooms =
-                meetingRoomRepository.findByStatusIn(
+        List<MeetingRoom> meetingRooms = meetingRoomRepository.findByStatusIn(
                         RoomStatus.AVAILABLE, RoomStatus.MAINTENANCE);
 
         // 2. 조회 대상 시간 범위 계산 - 오늘이면 현재 시간 이후 / 미래 날짜면 하루 전체 조회
@@ -57,8 +58,10 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
 
         LocalDateTime endAt = date.plusDays(1).atStartOfDay();
 
+        boolean isHoliday = HolidayService.isHoliday(date);
+
         // 3. 해당 날짜의 슬롯 조회
-        List<RoomSlot> roomSlots =
+        List<RoomSlot> roomSlots = isHoliday ? Collections.emptyList() :
                 roomSlotRepository.findBySlotStartAtGreaterThanEqualAndSlotStartAtLessThanOrderBySlotStartAtAsc(
                         startAt, endAt);
 

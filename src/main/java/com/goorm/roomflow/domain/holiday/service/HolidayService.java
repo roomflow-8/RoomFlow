@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface HolidayService {
     List<HolidayCalendarRes> getHolidayDatesForCalendar(LocalDate startDate, LocalDate endDate);
+    boolean isHoliday(LocalDate reservationDate);
 }
