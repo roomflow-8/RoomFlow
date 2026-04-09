@@ -102,16 +102,6 @@ public class SecurityConfig {
 		return httpSecurity.build();
 	}
 
-	@Bean
-	public UserDetailsService actuatorUserDetailsService() {
-		UserDetails actuator = User.withUsername("actuator")
-				.password("{noop}actuator123")
-				.roles("ACTUATOR")
-				.build();
-
-		return new InMemoryUserDetailsManager(actuator);
-	}
-
 	// 구글 최초 회원가입 시 - refreshToken을 받기 위한 설정
 	@Bean
 	public OAuth2AuthorizationRequestResolver customAuthorizationRequestResolver(
