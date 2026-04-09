@@ -3,6 +3,8 @@ package com.goorm.roomflow.domain.holiday.service;
 import com.goorm.roomflow.domain.holiday.dto.response.HolidayCalendarRes;
 import com.goorm.roomflow.domain.holiday.entity.Holiday;
 import com.goorm.roomflow.domain.holiday.repository.HolidayRepository;
+import com.goorm.roomflow.global.code.ErrorCode;
+import com.goorm.roomflow.global.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,5 +31,9 @@ public class HolidayServiceImpl implements HolidayService {
                         h.getTitle()
                 ))
                 .toList();
+    }
+
+    public boolean isHoliday(LocalDate reservationDate) {
+        return holidayRepository.existsByHolidayDateAndIsActiveTrue(reservationDate);
     }
 }
