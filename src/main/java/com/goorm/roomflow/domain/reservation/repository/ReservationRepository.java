@@ -62,4 +62,10 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
         where r.reservationId = :reservationId
     """)
     Optional<Reservation> findByIdWithAll(Long reservationId);
+
+    // 관리자 회원 목록용 - 유저별 전체 예약 건수
+    long countByUserUserId(Long userId);
+
+    // 관리자 회원 목록용 - 유저별 상태별 예약 건수 (취소 건수 집계에 사용)
+    long countByUserUserIdAndStatus(Long userId, ReservationStatus status);
 }

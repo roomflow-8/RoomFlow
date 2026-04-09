@@ -19,4 +19,10 @@ public interface UserJpaRepository extends JpaRepository<User, Long> {
 
     @EntityGraph(attributePaths = "socialAccounts")
     Optional<User> findWithSocialAccountsByUserId(Long userId);
+
+    // 탈퇴 대기 회원 목록 (deletedAt != null)
+    List<User> findAllByDeletedAtIsNotNull();
+
+    // 이름 또는 이메일 키워드 검색 (대소문자 무시)
+    List<User> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCase(String name, String email);
 }
