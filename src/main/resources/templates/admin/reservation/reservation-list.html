@@ -81,7 +81,6 @@
                         <p class="text-3xl font-bold text-gray-900 mt-2" th:text="${stats.total} + '건'">0건</p>
                         <p class="text-gray-400 text-xs mt-1">누적 예약 건수</p>
                     </div>
-                    <i data-lucide="file-text" class="w-12 h-12 text-gray-400"></i>
                 </div>
             </div>
 
@@ -93,7 +92,6 @@
                         <p class="text-3xl font-bold text-blue-600 mt-2" th:text="${stats.confirmed} + '건'">0건</p>
                         <p class="text-gray-400 text-xs mt-1">확정 상태</p>
                     </div>
-                    <i data-lucide="check-circle" class="w-12 h-12 text-blue-400"></i>
                 </div>
             </div>
 
@@ -105,7 +103,6 @@
                         <p class="text-3xl font-bold text-yellow-600 mt-2" th:text="${stats.cancelled} + '건'">0건</p>
                         <p class="text-gray-400 text-xs mt-1">취소 상태</p>
                     </div>
-                    <i data-lucide="clock" class="w-12 h-12 text-yellow-400"></i>
                 </div>
             </div>
 
@@ -117,7 +114,6 @@
                         <p class="text-3xl font-bold text-green-600 mt-2" th:text="${stats.today} + '건'">0건</p>
                         <p class="text-gray-400 text-xs mt-1">오늘 예약 건수</p>
                     </div>
-                    <i data-lucide="calendar-days" class="w-12 h-12 text-green-400"></i>
                 </div>
             </div>
         </div>
@@ -130,9 +126,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
                     <!-- 검색 -->
                     <div class="lg:col-span-2">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i data-lucide="search" class="w-4 h-4 inline"></i> 검색
-                        </label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">검색</label>
                         <input type="text"
                                name="searchQuery"
                                th:value="${searchQuery}"
@@ -142,9 +136,7 @@
 
                     <!-- 상태 -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i data-lucide="filter" class="w-4 h-4 inline"></i> 상태
-                        </label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">상태</label>
                         <select name="status"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             <option value="" th:selected="${status == null || status == ''}">전체</option>
@@ -157,9 +149,7 @@
 
                     <!-- 회의실 -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">
-                            <i data-lucide="door-open" class="w-4 h-4 inline"></i> 회의실
-                        </label>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">회의실</label>
                         <select name="room"
                                 class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             <option value="" th:selected="${room == null or room == ''}">전체</option>
@@ -171,16 +161,12 @@
                     <!-- 기간 -->
                     <div class="lg:col-span-2 grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                <i data-lucide="calendar" class="w-4 h-4 inline"></i> 시작일
-                            </label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">시작일</label>
                             <input type="date" name="startDate" th:value="${startDate}"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                <i data-lucide="calendar" class="w-4 h-4 inline"></i> 종료일
-                            </label>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">종료일</label>
                             <input type="date" name="endDate" th:value="${endDate}"
                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
@@ -189,13 +175,9 @@
 
                 <div class="flex gap-2">
                     <button type="submit"
-                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        <i data-lucide="search" class="w-4 h-4 inline"></i> 검색
-                    </button>
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">검색</button>
                     <a th:href="@{/admin/reservations(tab=${tab})}"
-                       class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
-                        <i data-lucide="rotate-ccw" class="w-4 h-4 inline"></i> 초기화
-                    </a>
+                       class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">초기화</a>
                 </div>
             </form>
         </div>
@@ -206,32 +188,22 @@
                 <nav class="flex -mb-px">
                     <a th:href="@{/admin/reservations(tab='all', searchQuery=${searchQuery}, status=${status}, room=${room}, startDate=${startDate}, endDate=${endDate})}"
                        th:classappend="${tab == 'all' or tab == null ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
-                       class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
-                        <i data-lucide="list" class="w-4 h-4 inline"></i>
-                        전체 (<span th:text="${reservations.totalElements}">0</span>)
+                       class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">전체 (<span th:text="${reservations.totalElements}">0</span>)
                     </a>
                     <a th:href="@{/admin/reservations(tab='today', searchQuery=${searchQuery}, status=${status}, room=${room}, startDate=${startDate}, endDate=${endDate})}"
                        th:classappend="${tab == 'today' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
                        class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
-                        <i data-lucide="calendar-days" class="w-4 h-4 inline"></i>
                         오늘 예약
                     </a>
                     <a th:href="@{/admin/reservations(tab='upcoming', searchQuery=${searchQuery}, status=${status}, room=${room}, startDate=${startDate}, endDate=${endDate})}"
                        th:classappend="${tab == 'upcoming' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
                        class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
-                        <i data-lucide="calendar-plus" class="w-4 h-4 inline"></i>
                         예정된 예약
                     </a>
                     <a th:href="@{/admin/reservations(tab='past', searchQuery=${searchQuery}, status=${status}, room=${room}, startDate=${startDate}, endDate=${endDate})}"
                        th:classappend="${tab == 'past' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
                        class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
-                        <i data-lucide="calendar-x" class="w-4 h-4 inline"></i>
                         지난 예약
-                    </a>
-                    <a th:href="@{/admin/reservations/history}"
-                       class="whitespace-nowrap py-4 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm">
-                        <i data-lucide="history" class="w-4 h-4 inline"></i>
-                        예약 히스토리
                     </a>
                 </nav>
             </div>
@@ -319,7 +291,6 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span th:if="${reservation.hasEquipment()}" class="flex items-center">
-                                <i data-lucide="package" class="w-4 h-4 text-blue-500 mr-1"></i>
                                 <span th:text="${reservation.equipmentCount()} + '개'"></span>
                             </span>
                             <span th:unless="${reservation.hasEquipment()}" class="text-gray-400">-</span>
@@ -346,7 +317,7 @@
                                         th:data-name="${reservation.userName}"
                                         th:data-room="${reservation.roomName}"
                                         class="inline-flex items-center px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors text-sm">
-                                    <i data-lucide="x-circle" class="w-4 h-4 mr-1"></i> 취소
+                                   취소
                                 </button>
 
                             </div>
@@ -484,8 +455,6 @@
         // 모달 표시
         document.getElementById('cancelModal').classList.remove('hidden');
 
-        // 아이콘 다시 초기화
-        lucide.createIcons();
     }
 
     // 취소 모달 닫기

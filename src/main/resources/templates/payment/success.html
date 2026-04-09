@@ -49,8 +49,9 @@
             </div>
 
             <div class="flex justify-between items-center">
-                <span class="text-gray-600">승인시간</span> <!--TODO:  (승인시간 화면출력 수정TODO) 현재 2026-04-07T20:00:30.686989로 출력-->
-                <span class="font-medium" th:text="${payment.approvedAt}"></span>
+                <span class="text-gray-600">승인시간</span>
+                <span class="font-medium"
+                      th:text="${#temporals.format(#temporals.createDateTime(payment.approvedAt), 'yyyy-MM-dd HH:mm' )}"> </span>
             </div>
 
             <hr>

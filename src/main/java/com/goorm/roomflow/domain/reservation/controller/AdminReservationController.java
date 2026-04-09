@@ -26,6 +26,10 @@ public class AdminReservationController {
 
 	private final AdminReservationService adminReservationService;
 
+
+	/**
+	 * 관리자 - 예약 목록 조회
+	 */
 	@GetMapping
 	public String reservationManagementList(
 			@RequestParam(required = false, defaultValue = "all") String tab,
@@ -116,36 +120,6 @@ public class AdminReservationController {
 		}
 		return "redirect:/admin/reservations";
 	}
-
-
-
-/*
-2.
-
-	// 예약 상세보기
-	@GetMapping("/{reservationId}")
-	public String reservationDetail(@PathVariable Long reservationId, Model model) {
-		AdminReservationListRes reservation = reservationService.getReservationById(reservationId);
-		model.addAttribute("reservation", reservation);
-		return "admin/reservation/reservation-detail";
-	}
-
-	// 예약 히스토리 페이지
-	@GetMapping("/history")
-	public String reservationHistory(
-			@PageableDefault(size = 20, sort = "modifiedAt", direction = Sort.Direction.DESC) Pageable pageable,
-			Model model) {
-
-		Page<ReservationHistoryDTO> history = reservationService.getReservationHistory(pageable);
-		model.addAttribute("history", history);
-
-		return "admin/reservations/reservation-history";
-	}
-
-
-
-
-*/
 
 
 }

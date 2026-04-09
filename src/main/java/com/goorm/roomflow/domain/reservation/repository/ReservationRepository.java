@@ -126,29 +126,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 			"WHERE r.reservationId = :reservationId")
 	Optional<Reservation> findByIdWithDetails(@Param("reservationId") Long reservationId);
 
-/*
-    // 검색 쿼리 (리스트 반환)
-    @Query("SELECT r FROM Reservation r " +
-            "LEFT JOIN FETCH r.member " +
-            "LEFT JOIN FETCH r.meetingRoom " +
-            "WHERE (:searchQuery IS NULL OR :searchQuery = '' OR " +
-            "       LOWER(r.id) LIKE LOWER(CONCAT('%', :searchQuery, '%')) OR " +
-            "       LOWER(r.member.name) LIKE LOWER(CONCAT('%', :searchQuery, '%')) OR " +
-            "       LOWER(r.member.email) LIKE LOWER(CONCAT('%', :searchQuery, '%')) OR " +
-            "       LOWER(r.meetingRoom.name) LIKE LOWER(CONCAT('%', :searchQuery, '%')) OR " +
-            "       LOWER(r.purpose) LIKE LOWER(CONCAT('%', :searchQuery, '%'))) " +
-            "AND (:status IS NULL OR r.status = :status) " +
-            "AND (:room IS NULL OR :room = '' OR r.meetingRoom.name = :room) " +
-            "AND (:startDate IS NULL OR r.date >= :startDate) " +
-            "AND (:endDate IS NULL OR r.date <= :endDate)")
-    List<Reservation> searchReservations(
-            @Param("searchQuery") String searchQuery,
-            @Param("status") ReservationStatus status,
-            @Param("room") String room,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate);
-*/
-
 
     @Query("""
         select distinct r
