@@ -24,23 +24,6 @@ public class UserRestController {
 
 	private final UserService userService;
 
-	/*
-	//원본
-	@Operation(summary = "현재 로그인 유저 정보 조회", description = "OAuth2 로그인된 유저의 정보를 반환합니다.")
-	@GetMapping("/me")
-	public ResponseEntity<Map<String, Object>> getCurrentUser(
-			@AuthenticationPrincipal OAuth2User oAuth2User) {
-
-		if (oAuth2User == null) {
-			return ResponseEntity.status(401).build();
-		}
-
-		return ResponseEntity.ok(oAuth2User.getAttributes());
-	}
-	*/
-
-
-	//CustomUser 적용
 	@Operation(summary = "현재 로그인 유저 정보 조회", description = "OAuth2 로그인된 유저의 정보를 반환합니다.")
 	@GetMapping("/me")
 	public ResponseEntity<ApiResponse<Map<String, Object>>> getCurrentUser(

@@ -46,8 +46,7 @@ public class ReservationController {
 			return "redirect:/reservations/rooms/" + reservationId;
 		} catch (BusinessException e) {
 			redirectAttributes.addFlashAttribute("alertType", "error");
-			redirectAttributes.addFlashAttribute("message", e.
-					getMessage());
+			redirectAttributes.addFlashAttribute("message", e.getMessage());
 
 			return "redirect:/rooms";
 		}
@@ -174,7 +173,7 @@ public class ReservationController {
 			redirectAttributes.addAttribute("orderId", checkoutReq.orderId());
 			redirectAttributes.addAttribute("orderName", checkoutReq.orderName());
 
-			//비품 추가 건에서 확인TODO:
+			//비품 추가 건에서 확인
 			redirectAttributes.addAttribute("reservationId", checkoutReq.reservationId());
 			redirectAttributes.addAttribute("roomAmount", checkoutReq.roomAmount());
 			redirectAttributes.addAttribute("equipmentAmount", checkoutReq.equipmentAmount());
@@ -184,7 +183,6 @@ public class ReservationController {
 			redirectAttributes.addFlashAttribute("message", "예약이 확정되었습니다.");
 
 			return "redirect:/payment/checkout";
-		//	return "redirect:/rooms";
 		} catch (BusinessException e) {
 			redirectAttributes.addFlashAttribute("alertType", "error");
 			redirectAttributes.addFlashAttribute("message", e.getMessage());

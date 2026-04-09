@@ -44,7 +44,7 @@ public class SecurityConfig {
 	 * .requestMatchers("/reservations/**", "/users/mypage/**", "/users/reservationlist").authenticated()
 	 * <p>
 	 * 3. you will gonna need it
-	 * .requestMatchers("/rooms/admin/**").hasRole("ADMIN") //admin 있을시 추가
+	 * .requestMatchers("/admin/**").hasRole("ADMIN") //admin 있을시 추가
 	 *
 	 */
 
@@ -58,6 +58,7 @@ public class SecurityConfig {
 						.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
 				)
 				.authorizeHttpRequests(auth -> auth
+						.requestMatchers("/admin/**").hasRole("ADMIN")
 						.requestMatchers(
 								"/", "/users/login", "/users/signup","/users/restore",
 								"/users/email/send", "/users/email/verify",

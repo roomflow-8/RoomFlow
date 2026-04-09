@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>예약 관리 | RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .stats-card {
+            transition: transform 0.2s;
+        }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .status-badge {
+            padding: 0.35rem 0.65rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-radius: 0.375rem;
+        }
+
+        .status-none {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-confirmed {
+            background-color: #dbeafe;
+            color: #1e3a8a;
+        }
+
+        .status-completed {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-cancelled {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-expired {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="flex w-full">
+    <div th:replace="~{fragments/admin-sidebar :: adminSidebar('reservations')}"></div>
+
+    <main class="flex-1 p-6">
+
+
+        <!-- 페이지 헤더 -->
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-2">
+                <i data-lucide="calendar-check" class="w-8 h-8"></i>
+                예약 관리
+            </h1>
+            <p class="text-gray-600 mt-2">회의실 예약 현황을 조회하고 관리하세요</p>
+        </div>
+
+        <!-- 통계 카드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            <!-- 전체 예약 -->
+            <div class="stats-card bg-white rounded-lg shadow-md p-6 border-l-4 border-gray-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">전체 예약</p>
+                        <p class="text-3xl font-bold text-gray-900 mt-2" th:text="${stats.total} + '건'">0건</p>
+                        <p class="text-gray-400 text-xs mt-1">누적 예약 건수</p>
+                    </div>
+                    <i data-lucide="file-text" class="w-12 h-12 text-gray-400"></i>
+                </div>
+            </div>
+
+            <!-- 확정된 예약 -->
+            <div class="stats-card bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">확정된 예약</p>
+                        <p class="text-3xl font-bold text-blue-600 mt-2" th:text="${stats.confirmed} + '건'">0건</p>
+                        <p class="text-gray-400 text-xs mt-1">확정 상태</p>
+                    </div>
+                    <i data-lucide="check-circle" class="w-12 h-12 text-blue-400"></i>
+                </div>
+            </div>
+
+            <!-- 취소된 예약 -->
+            <div class="stats-card bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">취소된 예약</p>
+                        <p class="text-3xl font-bold text-yellow-600 mt-2" th:text="${stats.cancelled} + '건'">0건</p>
+                        <p class="text-gray-400 text-xs mt-1">취소 상태</p>
+                    </div>
+                    <i data-lucide="clock" class="w-12 h-12 text-yellow-400"></i>
+                </div>
+            </div>
+
+            <!-- 금일 예약 -->
+            <div class="stats-card bg-white rounded-lg shadow-md p-6 border-l-4 border-green-500">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">금일 예약</p>
+                        <p class="text-3xl font-bold text-green-600 mt-2" th:text="${stats.today} + '건'">0건</p>
+                        <p class="text-gray-400 text-xs mt-1">오늘 예약 건수</p>
+                    </div>
+                    <i data-lucide="calendar-days" class="w-12 h-12 text-green-400"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- 검색 및 필터 -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <form method="get" th:action="@{/admin/reservations}" id="searchForm">
+                <input type="hidden" name="tab" th:value="${tab}">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+                    <!-- 검색 -->
+                    <div class="lg:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i data-lucide="search" class="w-4 h-4 inline"></i> 검색
+                        </label>
+                        <input type="text"
+                               name="searchQuery"
+                               th:value="${searchQuery}"
+                               placeholder="예약번호, 회원명, 이메일, 회의실..."
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+
+                    <!-- 상태 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i data-lucide="filter" class="w-4 h-4 inline"></i> 상태
+                        </label>
+                        <select name="status"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="" th:selected="${status == null || status == ''}">전체</option>
+                            <option value="PENDING" th:selected="${status == 'PENDING'}">대기</option>
+                            <option value="CONFIRMED" th:selected="${status == 'CONFIRMED'}">확정</option>
+                            <option value="COMPLETED" th:selected="${status == 'COMPLETED'}">완료</option>
+                            <option value="CANCELLED" th:selected="${status == 'CANCELLED'}">취소</option>
+                        </select>
+                    </div>
+
+                    <!-- 회의실 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i data-lucide="door-open" class="w-4 h-4 inline"></i> 회의실
+                        </label>
+                        <select name="room"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="" th:selected="${room == null or room == ''}">전체</option>
+                            <option th:each="r : ${rooms}" th:value="${r}" th:text="${r}"
+                                    th:selected="${room == r}"></option>
+                        </select>
+                    </div>
+
+                    <!-- 기간 -->
+                    <div class="lg:col-span-2 grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i data-lucide="calendar" class="w-4 h-4 inline"></i> 시작일
+                            </label>
+                            <input type="date" name="startDate" th:value="${startDate}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i data-lucide="calendar" class="w-4 h-4 inline"></i> 종료일
+                            </label>
+                            <input type="date" name="endDate" th:value="${endDate}"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <i data-lucide="search" class="w-4 h-4 inline"></i> 검색
+                    </button>
+                    <a th:href="@{/admin/reservations(tab=${tab})}"
+                       class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4 inline"></i> 초기화
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- 탭 메뉴 -->
+        <div class="bg-white rounded-lg shadow-md mb-6">
+            <div class="border-b border-gray-200">
+                <nav class="flex -mb-px">
+                    <a th:href="@{/admin/reservations(tab='all', searchQuery=${searchQuery}, status=${status}, room=${room}, startDate=${startDate}, endDate=${endDate})}"
+                       th:classappend="${tab == 'all' or tab == null ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+                       class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                        <i data-lucide="list" class="w-4 h-4 inline"></i>
+                        전체 (<span th:text="${reservations.totalElements}">0</span>)
+                    </a>
+                    <a th:href="@{/admin/reservations(tab='today', searchQuery=${searchQuery}, status=${status}, room=${room}, startDate=${startDate}, endDate=${endDate})}"
+                       th:classappend="${tab == 'today' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+                       class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                        <i data-lucide="calendar-days" class="w-4 h-4 inline"></i>
+                        오늘 예약
+                    </a>
+                    <a th:href="@{/admin/reservations(tab='upcoming', searchQuery=${searchQuery}, status=${status}, room=${room}, startDate=${startDate}, endDate=${endDate})}"
+                       th:classappend="${tab == 'upcoming' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+                       class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                        <i data-lucide="calendar-plus" class="w-4 h-4 inline"></i>
+                        예정된 예약
+                    </a>
+                    <a th:href="@{/admin/reservations(tab='past', searchQuery=${searchQuery}, status=${status}, room=${room}, startDate=${startDate}, endDate=${endDate})}"
+                       th:classappend="${tab == 'past' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+                       class="whitespace-nowrap py-4 px-6 border-b-2 font-medium text-sm">
+                        <i data-lucide="calendar-x" class="w-4 h-4 inline"></i>
+                        지난 예약
+                    </a>
+                    <a th:href="@{/admin/reservations/history}"
+                       class="whitespace-nowrap py-4 px-6 border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 font-medium text-sm">
+                        <i data-lucide="history" class="w-4 h-4 inline"></i>
+                        예약 히스토리
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- 예약 목록 테이블 -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900">
+                    <span th:if="${tab == 'today'}">오늘 예약 목록</span>
+                    <span th:if="${tab == 'upcoming'}">예정된 예약 목록</span>
+                    <span th:if="${tab == 'past'}">지난 예약 목록</span>
+                    <span th:if="${tab == 'all' or tab == null}">전체 예약 목록</span>
+                </h3>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            예약번호
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">회원
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">회의실
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">날짜
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">시간
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">비품
+                        </th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">금액
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">상태
+                        </th>
+                        <th th:if="${tab != 'past'}"
+                            class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            예약 취소
+                        </th>
+                    </tr>
+                    </thead>
+
+
+                    <tbody class="bg-white divide-y divide-gray-200">
+
+
+                    <tr th:if="${reservations.empty}">
+                        <td colspan="9" class="px-6 py-12 text-center text-gray-500">
+                            <i data-lucide="inbox" class="w-16 h-16 mx-auto mb-4 text-gray-300"></i>
+                            <p>예약 내역이 없습니다.</p>
+                        </td>
+                    </tr>
+
+
+
+
+
+                    <tr th:each="reservation : ${reservations.content}" class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <a th:href="@{/admin/reservations/{id}(id=${reservation.reservationId()})}"
+                               class="text-blue-600 hover:text-blue-800 font-semibold">
+                                <span th:text="${reservation.reservationId()}"></span>
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex flex-col">
+                                <span class="font-medium text-gray-900" th:text="${reservation.userName()}"></span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <i data-lucide="door-open" class="w-4 h-4 text-gray-400 mr-2"></i>
+                                <span th:text="${reservation.roomName()}"></span>
+                            </div>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-900" th:text="${reservation.getDate()}"></td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <i data-lucide="clock" class="w-4 h-4 text-gray-400 mr-2"></i>
+                                <span th:text="${reservation.getTimeRange()}"></span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span th:if="${reservation.hasEquipment()}" class="flex items-center">
+                                <i data-lucide="package" class="w-4 h-4 text-blue-500 mr-1"></i>
+                                <span th:text="${reservation.equipmentCount()} + '개'"></span>
+                            </span>
+                            <span th:unless="${reservation.hasEquipment()}" class="text-gray-400">-</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-900">
+                            <span th:text="${reservation.getFormattedTotalAmount()}"></span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="status-badge"
+                                  th:classappend="${reservation.getStatusBadgeClass()}"
+                                  th:text="${reservation.status().name() == 'PENDING' ? '대기' :
+                                           reservation.status().name() == 'CONFIRMED' ? '확정' :
+                                           reservation.status().name() == 'CANCELLED' ? '취소' : '만료'}">
+                            </span>
+                        </td>
+
+
+                        <td th:if="${tab != 'past'}"
+                            class="px-6 py-4 whitespace-nowrap text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button th:if="${reservation.status.name() == 'CONFIRMED'}"
+                                        onclick="showCancelModal(this)"
+                                        th:data-id="${reservation.reservationId}"
+                                        th:data-name="${reservation.userName}"
+                                        th:data-room="${reservation.roomName}"
+                                        class="inline-flex items-center px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors text-sm">
+                                    <i data-lucide="x-circle" class="w-4 h-4 mr-1"></i> 취소
+                                </button>
+
+                            </div>
+                        </td>
+                    </tr>
+
+
+                    </tbody>
+                </table>
+            </div>
+
+
+            <!-- 페이징 -->
+     <div th:if="${reservations.totalPages > 1}" class="px-6 py-4 border-t border-gray-200">
+
+                <nav class="flex items-center justify-center">
+                    <ul class="flex items-center gap-2">
+                        <li>
+                            <a th:href="@{/admin/reservations(tab=${tab}, page=${reservations.number - 1}, searchQuery=${searchQuery}, status=${status}, room=${room}, startDate=${startDate}, endDate=${endDate})}"
+                               th:classappend="${reservations.first} ? 'pointer-events-none opacity-50' : ''"
+                               class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                &lt;
+                            </a>
+                        </li>
+
+                        <li th:each="i : ${#numbers.sequence(0, reservations.totalPages - 1)}">
+                            <a th:href="@{/admin/reservations(tab=${tab}, page=${i}, searchQuery=${searchQuery}, status=${status}, room=${room}, startDate=${startDate}, endDate=${endDate})}"
+                               th:classappend="${i == reservations.number} ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'"
+                               class="px-3 py-2 border border-gray-300 rounded-lg"
+                               th:text="${i + 1}">1</a>
+                        </li>
+
+                        <li>
+                            <a th:href="@{/admin/reservations(tab=${tab}, page=${reservations.number + 1}, searchQuery=${searchQuery}, status=${status}, room=${room}, startDate=${startDate}, endDate=${endDate})}"
+                               th:classappend="${reservations.last} ? 'pointer-events-none opacity-50' : ''"
+                               class="px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+                                &gt;
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+
+        <!-- 예약 취소 모달 -->
+        <div id="cancelModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <form id="cancelForm" method="post">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <div class="mt-3">
+                        <!-- 헤더 -->
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900">
+                                <i data-lucide="alert-triangle" class="w-5 h-5 inline text-yellow-500"></i>
+                                예약 취소
+                            </h3>
+                            <button type="button" onclick="closeCancelModal()" class="text-gray-400 hover:text-gray-500">
+                                <i data-lucide="x" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+
+                        <!-- 내용 -->
+                        <div class="mt-2 px-2 py-3">
+                            <p class="text-sm text-gray-500 mb-4">
+                                다음 예약을 취소하시겠습니까?
+                            </p>
+                            <div class="bg-gray-50 p-3 rounded-lg space-y-2 text-sm mb-4">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">예약자:</span>
+                                    <span id="cancel-user-name" class="font-medium"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">회의실:</span>
+                                    <span id="cancel-room-name" class="font-medium"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">예약 ID:</span>
+                                    <span id="cancel-reservation-id" class="font-medium"></span>
+                                </div>
+                            </div>
+
+                            <!-- 취소 사유 입력 -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    취소 사유
+                                </label>
+                                <textarea name="cancelReason"
+                                          rows="3"
+                                          placeholder="취소 사유를 입력하세요 (선택사항)"
+                                          class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"></textarea>
+                            </div>
+
+                            <p class="text-xs text-red-600 mt-3">
+                                ⚠️ 취소된 예약은 복구할 수 없습니다.
+                            </p>
+                        </div>
+
+                        <!-- 버튼 -->
+                        <div class="flex gap-3 mt-5">
+                            <button type="button"
+                                    onclick="closeCancelModal()"
+                                    class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                                취소
+                            </button>
+                            <button type="submit"
+                                    class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                                예약 취소
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+    // 취소 모달 열기
+    function showCancelModal(button) {
+        const reservationId = button.getAttribute('data-id');
+        const userName = button.getAttribute('data-name');
+        const roomName = button.getAttribute('data-room');
+
+        // 폼 액션 설정
+        const form = document.getElementById('cancelForm');
+        form.action = `/admin/reservations/${reservationId}/cancel`;
+
+        // 모달에 데이터 표시
+        document.getElementById('cancel-reservation-id').textContent = reservationId;
+        document.getElementById('cancel-user-name').textContent = userName;
+        document.getElementById('cancel-room-name').textContent = roomName;
+
+        // 모달 표시
+        document.getElementById('cancelModal').classList.remove('hidden');
+
+        // 아이콘 다시 초기화
+        lucide.createIcons();
+    }
+
+    // 취소 모달 닫기
+    function closeCancelModal() {
+        document.getElementById('cancelModal').classList.add('hidden');
+        document.getElementById('cancelForm').reset();
+    }
+
+    // ESC 키로 모달 닫기
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeCancelModal();
+        }
+    });
+
+    // 모달 배경 클릭 시 닫기
+    document.getElementById('cancelModal')?.addEventListener('click', function(event) {
+        if (event.target === this) {
+            closeCancelModal();
+        }
+    });
+</script>
+
+
+</body>
+</html>
+
+

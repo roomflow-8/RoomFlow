@@ -4,6 +4,7 @@ import com.goorm.roomflow.domain.payment.entity.Payment;
 import lombok.Builder;
 
 import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
 
 @Builder
 public record PaymentResultRes(
@@ -28,3 +29,5 @@ public record PaymentResultRes(
 				.build();
 	}
 }
+
+//.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));

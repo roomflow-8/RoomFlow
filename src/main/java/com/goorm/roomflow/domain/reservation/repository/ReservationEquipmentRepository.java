@@ -1,5 +1,6 @@
 package com.goorm.roomflow.domain.reservation.repository;
 
+import com.goorm.roomflow.domain.reservation.dto.response.ReservationEquipmentRes;
 import com.goorm.roomflow.domain.reservation.entity.ReservationEquipment;
 import com.goorm.roomflow.domain.reservation.entity.ReservationStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -104,5 +105,23 @@ public interface ReservationEquipmentRepository extends JpaRepository<Reservatio
 		  and rs.slotStartAt >= :now
 	""")
 	boolean existsFutureReservationByEquipmentId(Long equipmentId, LocalDateTime now);
+
+
+/*
+	// 여러 예약의 비품 일괄 조회
+	@Query("SELECT re FROM ReservationEquipment re " +
+			"LEFT JOIN FETCH re.equipment " +
+			"WHERE re.reservation.id IN :reservationIds")
+	List<ReservationEquipment> findAllByReservationIdsWithEquipment(
+			@Param("reservationIds") List<Long> reservationIds);
+
+ */
+
+	// 단일 예약의 비품 조회
+	@Query("SELECT re FROM ReservationEquipment re " +
+			"LEFT JOIN FETCH re.equipment " +
+			"WHERE re.reservation.reservationId = :reservationId")
+	List<ReservationEquipmentRes> findByReservationIdWithEquipment(
+			@Param("reservationId") Long reservationId);
 
 }
