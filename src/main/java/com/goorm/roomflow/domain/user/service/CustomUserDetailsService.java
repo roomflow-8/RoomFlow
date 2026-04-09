@@ -3,7 +3,6 @@ package com.goorm.roomflow.domain.user.service;
 import com.goorm.roomflow.domain.user.entity.User;
 import com.goorm.roomflow.domain.user.repository.UserJpaRepository;
 import com.goorm.roomflow.global.code.ErrorCode;
-import com.goorm.roomflow.global.exception.BusinessException;
 import com.goorm.roomflow.global.exception.CustomAuthenticationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

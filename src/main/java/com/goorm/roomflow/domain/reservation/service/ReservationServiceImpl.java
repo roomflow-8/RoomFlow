@@ -189,7 +189,6 @@ public class ReservationServiceImpl implements ReservationService {
 		User user = userRepository.findById(userId)
 				.orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-
 		// 1. 회의실 조회
 		MeetingRoom meetingRoom = meetingRoomRepository.findById(request.roomId())
 				.orElseThrow(() -> new BusinessException(ErrorCode.ROOM_NOT_FOUND));
