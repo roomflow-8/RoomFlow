@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/equip-list.css}">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel='stylesheet'
+          href='https://cdn-uicons.flaticon.com/4.0.0/uicons-regular-rounded/css/uicons-regular-rounded.css'>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="bg-gray-50 min-h-screen pb-24 xl:pb-0">
+
+<div th:replace="~{fragments/header :: header}"></div>
+
+<div class="flex min-h-screen">
+    <!-- Main Content -->
+    <div class="flex-1 min-w-0">
+        <div id="equip-data"
+             th:data-res-id="${reservationId}"
+             th:data-reservation-status="${reservationStatus}">
+        </div>
+
+        <main class="max-w-7xl mx-auto px-4 py-8">
+            <!-- 뒤로가기 버튼 -->
+            <button onclick="confirmBack(event)"
+                    type="button"
+                    class="flex items-center gap-2 mb-6 text-gray-600 hover:text-black transition-colors cursor-pointer">
+                <i class="fi fi-rr-left leading-none flex items-center"></i>
+                <span>이전 단계로</span>
+            </button>
+
+            <!-- 헤더 -->
+            <div class="flex items-center justify-between mb-2">
+                <h1 class="text-3xl font-bold">비품 선택</h1>
+                <!-- ⭐ 서버에서 바로 렌더링 -->
+                <div id="equipment-count" class="px-3 py-1 border border-gray-300 rounded-md text-sm">
+                    총 <span th:text="${#lists.size(equipments)}">0</span>개 비품
+                </div>
+            </div>
+            <p class="text-gray-600 mb-8">필요한 비품을 선택하고 수량을 지정하세요</p>
+
+            <!-- 성공/에러 메시지 -->
+
+            <div th:if="${errorMessage}"
+                 class="mb-4 p-4 bg-red-100 border border-red-300 rounded-lg text-red-800">
+                <i data-lucide="alert-circle" class="w-5 h-5 inline mr-2"></i>
+                [[${errorMessage}]]
+            </div>
+
+
+            <!-- Form -->
+            <form th:action="@{/reservations/{reservationId}/equipments(reservationId=${reservationId})}"
+                  method="POST"
+                  id="equipment-form"
+                  onsubmit="return validateForm()">
+
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+                <!-- 비품 목록 -->
+                <div id="equipment-list"
+                     class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                     th:classappend="${equipments == null or #lists.isEmpty(equipments)} ? 'hidden' : ''">
+
+                    <div th:each="equipment : ${equipments}"
+                         class="equipment-card bg-white rounded-lg shadow transition-all duration-200"
+                         th:data-equipment-id="${equipment.equipmentId}"
+                         th:classappend="${equipment.availableStock == 0 or equipment.status.name() != 'AVAILABLE'} ? 'opacity-60' : ''">
+
+                        <!-- Hidden inputs -->
+                        <input type="hidden"
+                               th:name="|equipments[${equipment.equipmentId}].equipmentId|"
+                               th:value="${equipment.equipmentId}"/>
+                        <input type="hidden"
+                               th:name="|equipments[${equipment.equipmentId}].quantity|"
+                               th:value="0"
+                               class="equipment-quantity-input"/>
+
+                        <!-- 카드 헤더 -->
+                        <div class="p-6 border-b border-gray-200">
+                            <div class="flex items-start justify-between">
+                                <div class="flex items-center gap-3 flex-1">
+                                    <div class="p-3 bg-blue-100 rounded-lg">
+                                        <img th:if="${equipment.imageUrl != null and !#strings.isEmpty(equipment.imageUrl)}"
+                                             th:src="${equipment.imageUrl}" class="w-32 h-32 object-cover">
+                                            <span th:unless="${equipment.imageUrl != null and !#strings.isEmpty(equipment.imageUrl)}" class="text-gray-400 text-sm">
+                                               <i th:attr="data-lucide=${equipment.equipmentName.toLowerCase().contains('노트북') ? 'laptop' : 'package'}"
+                                                  class="w-6 h-6 text-blue-600"></i>
+                                        </span>
+
+
+                                    </div>
+                                    <div class="flex-1">
+                                        <h3 class="text-lg font-semibold text-gray-900"
+                                            th:text="${equipment.equipmentName}">비품명</h3>
+                                    </div>
+                                </div>
+                                <button type="button"
+                                        class="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors"
+                                        th:onclick="|showDetail(${equipment.equipmentId})|"
+                                        title="상세 정보">
+                                    <i data-lucide="info" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 카드 본문 -->
+                        <div class="p-6">
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm text-gray-600">재고 현황</p>
+                                        <p class="text-lg font-semibold text-gray-900">
+                                            <span class="available-stock"
+                                                  th:classappend="${equipment.availableStock == 0} ? 'text-red-600' : 'text-blue-600'"
+                                                  th:text="${equipment.availableStock}">0</span>
+                                            / <span class="total-stock" th:text="${equipment.totalStock}">0</span>
+                                        </p>
+                                    </div>
+                                    <span class="status-badge px-3 py-1 rounded-full text-sm font-medium"
+                                          th:classappend="${equipment.availableStock > 0 and equipment.status.name() == 'AVAILABLE'} ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                          th:text="${equipment.availableStock > 0 and equipment.status.name() == 'AVAILABLE'} ? '대여 가능' : '대여 불가'">
+                                        대여 가능
+                                    </span>
+                                </div>
+
+                                <div>
+                                    <p class="text-sm text-gray-600">대여료</p>
+                                    <p class="text-xl font-bold text-gray-900"
+                                       th:text="${#numbers.formatInteger(equipment.price, 0, 'COMMA')} + '원'">0원</p>
+                                </div>
+
+                                <!-- 수량 선택 -->
+                                <div th:if="${equipment.availableStock > 0 and equipment.status.name() == 'AVAILABLE'}"
+                                     class="pt-4 border-t">
+                                    <p class="text-sm text-gray-600 mb-2">수량 선택</p>
+
+
+                                    <div class="flex items-center gap-2 w-full">
+                                        <button type="button"
+                                                class="btn-decrease flex-1 basis-0 py-2 sm:py-3 border border-gray-300 rounded-md
+                   hover:bg-gray-50 disabled:opacity-50"
+                                                th:onclick="|decreaseQuantity(${equipment.equipmentId})|"
+                                                disabled>
+                                            <i data-lucide="minus" class="w-4 h-4 sm:w-5 sm:h-5 mx-auto"></i>
+                                        </button>
+
+                                        <div class="w-12 sm:w-16 text-center font-semibold text-lg quantity-display">
+                                            0
+                                        </div>
+
+                                        <button type="button"
+                                                class="btn-increase flex-1 basis-0 py-2 sm:py-3 border border-gray-300 rounded-md
+                   hover:bg-gray-50"
+                                                th:onclick="|increaseQuantity(${equipment.equipmentId})|"
+                                                th:attr="data-max=${equipment.availableStock}">
+                                            <i data-lucide="plus" class="w-4 h-4 sm:w-5 sm:h-5 mx-auto"></i>
+                                        </button>
+                                    </div>
+
+                                </div>
+
+                                <!-- 대여 불가 메시지 -->
+                                <div th:unless="${equipment.availableStock > 0 and equipment.status.name() == 'AVAILABLE'}"
+                                     class="pt-4 border-t">
+                                    <p class="text-sm text-red-600 text-center">현재 대여 불가능합니다</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 비품 없음 -->
+                <div id="no-equipment"
+                     th:class="${equipments == null or #lists.isEmpty(equipments)} ? '' : 'hidden'">
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-12 text-center">
+                        <div class="text-yellow-600 mb-4">
+                            <i data-lucide="package-x" class="w-16 h-16 mx-auto"></i>
+                        </div>
+                        <p class="text-xl font-bold text-yellow-900 mb-2">사용 가능한 비품이 없습니다</p>
+                        <p class="text-yellow-700">다른 시간대를 선택해주세요</p>
+                    </div>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <!-- 사이드바 -->
+    <div class="hidden xl:block flex-shrink-0 w-96 bg-white border-l border-gray-200 p-6 overflow-y-auto sticky top-0 h-screen">
+        <div class="flex items-center gap-2 mb-6">
+            <i data-lucide="shopping-cart" class="w-6 h-6 text-gray-700"></i>
+            <h2 class="text-xl font-bold">비품 신청 현황</h2>
+        </div>
+
+        <div id="cart-empty" class="text-center py-12 text-gray-500">
+            <i data-lucide="shopping-cart" class="w-12 h-12 mx-auto mb-4 text-gray-300"></i>
+            <p class="font-semibold">선택한 비품이 없습니다</p>
+            <p class="text-sm mt-2">비품을 선택해주세요</p>
+        </div>
+
+        <div id="cart-items" class="space-y-4 hidden"></div>
+
+        <div id="cart-summary" class="mt-4 hidden">
+            <div class="bg-gray-50 border-2 border-gray-300 rounded-lg p-4">
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-600">총 비품 수:</span>
+                        <span class="font-semibold"><span id="total-quantity">0</span>개</span>
+                    </div>
+                    <div class="flex justify-between pt-2 border-t border-gray-300">
+                        <span class="font-bold">총 대여료:</span>
+                        <span class="font-bold text-xl text-blue-600">
+                            <span id="total-fee">0</span>원
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit"
+                    form="equipment-form"
+                    class="w-full h-12 mt-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-semibold transition-colors">
+                <i data-lucide="check" class="w-5 h-5 inline mr-2"></i>
+                비품 신청 완료
+            </button>
+        </div>
+    </div>
+
+    <!-- 모바일 제출 버튼 -->
+    <div id="mobile-submit"
+         class="xl:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 shadow-lg z-50">
+        <button type="submit"
+                form="equipment-form"
+                class="w-full h-12 bg-blue-600 text-white rounded-md font-semibold">
+            비품 신청 완료
+        </button>
+    </div>
+</div>
+
+<!-- 상세 정보 다이얼로그 -->
+<div id="detail-dialog"
+     class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full overflow-hidden">
+        <div class="p-6 border-b border-gray-100">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">비품 상세 정보</h2>
+                </div>
+                <button onclick="closeDetail()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-6">
+            <div class="flex items-center gap-4">
+                <div class="p-4 bg-blue-100 rounded-lg">
+                    <img id="modal-image" src="" alt="비품 이미지" class="w-20 h-20 object-cover hidden">
+                    <i id="modal-icon" data-lucide="package" class="w-10 h-10 text-blue-600"></i>
+                </div>
+                <div>
+                    <h3 id="modal-name" class="text-xl font-bold text-gray-900">비품 이름</h3>
+                    <div id="modal-status-badge" class="mt-1"></div>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="font-semibold mb-2 text-gray-700">설명</h4>
+                <p id="modal-description" class="text-gray-600 leading-relaxed text-sm">
+                    비품에 대한 상세 설명이 표시됩니다.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 border-t pt-4 text-sm text-gray-500">
+                <div>재고: <span id="modal-stock" class="font-medium text-gray-900">0/0</span></div>
+                <div class="text-right">대여료: <span id="modal-price" class="font-bold text-blue-600">0원</span></div>
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button onclick="closeDetail()"
+                        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 transition-colors">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container" class="fixed top-4 right-4 z-[9999] space-y-2"></div>
+
+<script th:src="@{/js/equip-list.js}"></script>
+</body>
+</html>

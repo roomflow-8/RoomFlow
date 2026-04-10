@@ -1,0 +1,19 @@
+package com.goorm.roomflow.domain.payment.entity;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+@Getter
+@RequiredArgsConstructor
+public enum PaymentStatus {
+
+	READY("결제 대기"),
+	IN_PROGRESS("결제 진행중"),
+	DONE("결제 완료"),
+	CANCELED("전체 취소"),
+	PARTIAL_CANCELED("부분 취소"),
+	ABORTED("결제 실패"),
+	EXPIRED("결제 만료");
+
+	private final String description;
+}

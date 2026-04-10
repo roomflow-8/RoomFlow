@@ -1,0 +1,16 @@
+<th:block th:fragment="alertScript">
+    <script th:if="${message}" th:inline="javascript">
+        window.addEventListener('load', function () {
+            Swal.fire({
+                toast: true,
+                position: 'top',
+                width: '420px',
+                icon: [[${alertType != null ? alertType : 'success'}]],
+            title: [[${message}]],
+                showConfirmButton: false,
+                timer: 1800,
+                timerProgressBar: true
+        });
+        });
+    </script>
+</th:block>

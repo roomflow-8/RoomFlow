@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>휴무일 관리 | RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+<div th:replace="~{fragments/header :: header}"></div>
+<th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
+
+<div class="flex w-full min-h-screen">
+    <div th:replace="~{fragments/admin-sidebar :: adminSidebar('system')}"></div>
+
+    <main class="flex-1 p-6">
+        <div th:replace="~{admin/system/system-tabs :: systemTabs('holidays')}"></div>
+
+        <section class="mt-6 space-y-6">
+            <!-- 상단 카드 -->
+            <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-6">
+                <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-900">휴무일 관리</h1>
+                        <p class="mt-2 text-sm text-gray-500">
+                            특정 날짜를 전체 회의실 예약 불가일로 관리합니다.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button type="button"
+                                onclick="openImportModal()"
+                                class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                            공휴일 가져오기
+                        </button>
+
+                        <button type="button"
+                                onclick="openCreateModal()"
+                                class="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-black text-sm font-medium text-white hover:bg-gray-800 transition">
+                            휴무일 등록
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 목록 카드 -->
+            <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                <div class="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">휴무일 목록</h2>
+                        <p class="mt-1 text-sm text-gray-500">
+                            등록된 휴무일을 목록에서 바로 수정하거나 상태를 변경할 수 있습니다.
+                        </p>
+                    </div>
+
+                    <div class="text-sm text-gray-500">
+                        총 <span class="font-semibold text-gray-800" th:text="${#lists.size(holidays)}">0</span>건
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr class="text-left text-gray-600">
+                            <th class="px-6 py-4 font-semibold">휴무일명</th>
+                            <th class="px-6 py-4 font-semibold">설명</th>
+                            <th class="px-6 py-4 font-semibold">날짜</th>
+                            <th class="px-6 py-4 font-semibold">상태</th>
+                            <th class="px-6 py-4 font-semibold">수정일</th>
+                            <th class="px-6 py-4 font-semibold text-right">관리</th>
+                        </tr>
+                        </thead>
+
+                        <tbody class="divide-y divide-gray-100">
+                        <tr th:if="${#lists.isEmpty(holidays)}">
+                            <td colspan="6" class="px-6 py-16 text-center">
+                                <div class="flex flex-col items-center gap-2">
+                                    <p class="text-base font-semibold text-gray-700">등록된 휴무일이 없습니다.</p>
+                                    <p class="text-sm text-gray-500">휴무일을 직접 등록하거나 공공 API로 공휴일을 가져와 보세요.</p>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr th:each="holiday : ${holidays}" class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-5 align-top">
+                                <div class="font-semibold text-gray-900" th:text="${holiday.title}">어린이날</div>
+                            </td>
+
+                            <td class="px-6 py-5 align-top">
+                                <p class="text-gray-600 break-words max-w-xs"
+                                   th:text="${holiday.description != null and !#strings.isEmpty(holiday.description) ? holiday.description : '-'}">
+                                    설명
+                                </p>
+                            </td>
+
+                            <td class="px-6 py-5 align-top">
+                                <span class="font-medium text-gray-800"
+                                      th:text="${#temporals.format(holiday.holidayDate, 'yyyy-MM-dd')}">2026-05-05</span>
+                            </td>
+
+                            <td class="px-6 py-5 align-top">
+                                <span th:if="${holiday.active}"
+                                      class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                                    활성
+                                </span>
+                                <span th:unless="${holiday.active}"
+                                      class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">
+                                    비활성
+                                </span>
+                            </td>
+
+                            <td class="px-6 py-5 align-top text-gray-600">
+                                <span th:text="${#temporals.format(holiday.updatedAt, 'yyyy-MM-dd HH:mm')}"></span>
+                            </td>
+
+                            <td class="px-6 py-5 align-top">
+                                <div class="flex items-center justify-end gap-2 flex-wrap">
+                                    <button type="button"
+                                            class="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+                                            th:attr="data-id=${holiday.holidayId},
+                                                     data-title=${holiday.title},
+                                                     data-description=${holiday.description},
+                                                     data-date=${holiday.holidayDate},
+                                                     data-active=${holiday.active}"
+                                            onclick="openEditModal(this)">
+                                        수정
+                                    </button>
+
+                                    <form th:action="@{/admin/holidays/{holidayId}/status(holidayId=${holiday.holidayId})}"
+                                          method="post"
+                                          class="inline">
+                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                        <input type="hidden" name="active" th:value="${!holiday.active}">
+                                        <button type="submit"
+                                                th:classappend="${holiday.active} ? 'border-yellow-300 text-yellow-700 hover:bg-yellow-50' : 'border-green-300 text-green-700 hover:bg-green-50'"
+                                                class="px-3 py-2 rounded-lg border transition">
+                                            <span th:text="${holiday.active} ? '비활성화' : '활성화'">비활성화</span>
+                                        </button>
+                                    </form>
+
+                                    <form th:action="@{/admin/holidays/{holidayId}/delete(holidayId=${holiday.holidayId})}"
+                                          method="post"
+                                          class="inline delete-form"
+                                          th:attr="data-title=${holiday.title}">
+                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                        <button type="submit"
+                                                class="px-3 py-2 rounded-lg border border-red-300 text-red-600 hover:bg-red-50 transition">
+                                            삭제
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </section>
+    </main>
+</div>
+
+<!-- 등록 모달 -->
+<div id="createModal"
+     class="fixed inset-0 z-50 hidden items-center justify-center bg-black/45 px-4">
+    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">휴무일 등록</h3>
+                <p class="mt-1 text-sm text-gray-500">특정 날짜를 전체 회의실 예약 불가일로 등록합니다.</p>
+            </div>
+            <button type="button"
+                    onclick="closeCreateModal()"
+                    class="text-gray-400 hover:text-gray-600 text-2xl leading-none">
+                &times;
+            </button>
+        </div>
+
+        <form th:action="@{/admin/holidays/create}" method="post" class="p-6 space-y-5">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+            <div>
+                <label for="createTitle" class="block text-sm font-medium text-gray-700 mb-2">휴무일명</label>
+                <input type="text"
+                       id="createTitle"
+                       name="title"
+                       placeholder="예: 공휴일"
+                       class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black">
+            </div>
+
+            <div>
+                <label for="createDescription" class="block text-sm font-medium text-gray-700 mb-2">설명</label>
+                <textarea id="createDescription"
+                          name="description"
+                          rows="4"
+                          placeholder="휴무일에 대한 간단한 설명을 입력하세요."
+                          class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black resize-none"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label for="createHolidayDate" class="block text-sm font-medium text-gray-700 mb-2">휴무일 날짜</label>
+                    <input type="date"
+                           id="createHolidayDate"
+                           name="holidayDate"
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black">
+                </div>
+
+                <div>
+                    <label for="createIsActive" class="block text-sm font-medium text-gray-700 mb-2">상태</label>
+                    <select id="createIsActive"
+                            name="active"
+                            class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black">
+                        <option value="true" selected>활성</option>
+                        <option value="false">비활성</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button type="button"
+                        onclick="closeCreateModal()"
+                        class="px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
+                    취소
+                </button>
+                <button type="submit"
+                        class="px-4 py-2.5 rounded-xl bg-black text-white hover:bg-gray-800 transition">
+                    등록하기
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 수정 모달 -->
+<div id="editModal"
+     class="fixed inset-0 z-50 hidden items-center justify-center bg-black/45 px-4">
+    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">휴무일 수정</h3>
+                <p class="mt-1 text-sm text-gray-500">목록에서 선택한 휴무일 정보를 수정합니다.</p>
+            </div>
+            <button type="button"
+                    onclick="closeEditModal()"
+                    class="text-gray-400 hover:text-gray-600 text-2xl leading-none">
+                &times;
+            </button>
+        </div>
+
+        <form id="editForm" method="post" class="p-6 space-y-5">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+            <div>
+                <label for="editTitle" class="block text-sm font-medium text-gray-700 mb-2">휴무일명</label>
+                <input type="text"
+                       id="editTitle"
+                       name="title"
+                       class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black">
+            </div>
+
+            <div>
+                <label for="editDescription" class="block text-sm font-medium text-gray-700 mb-2">설명</label>
+                <textarea id="editDescription"
+                          name="description"
+                          rows="4"
+                          class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black resize-none"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label for="editHolidayDate" class="block text-sm font-medium text-gray-700 mb-2">휴무일 날짜</label>
+                    <input type="date"
+                           id="editHolidayDate"
+                           name="holidayDate"
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black">
+                </div>
+
+                <div>
+                    <label for="editIsActive" class="block text-sm font-medium text-gray-700 mb-2">상태</label>
+                    <select id="editIsActive"
+                            name="active"
+                            class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black">
+                        <option value="true">활성</option>
+                        <option value="false">비활성</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button type="button"
+                        onclick="closeEditModal()"
+                        class="px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
+                    취소
+                </button>
+                <button type="submit"
+                        class="px-4 py-2.5 rounded-xl bg-black text-white hover:bg-gray-800 transition">
+                    수정하기
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 공공 API 가져오기 모달 -->
+<div id="importModal"
+     class="fixed inset-0 z-50 hidden items-center justify-center bg-black/45 px-4">
+    <div class="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-900">공휴일 가져오기</h3>
+                <p class="mt-1 text-sm text-gray-500">공공 API를 통해 특정 연도 또는 월의 공휴일을 불러옵니다.</p>
+            </div>
+            <button type="button"
+                    onclick="closeImportModal()"
+                    class="text-gray-400 hover:text-gray-600 text-2xl leading-none">
+                &times;
+            </button>
+        </div>
+
+        <form th:action="@{/admin/holidays/import}" method="post" class="p-6 space-y-5">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                    <label for="importYear" class="block text-sm font-medium text-gray-700 mb-2">연도</label>
+                    <input type="number"
+                           id="importYear"
+                           name="year"
+                           min="2000"
+                           max="2100"
+                           th:value="${#temporals.format(#temporals.createNow(), 'yyyy')}"
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black">
+                </div>
+
+                <div>
+                    <label for="importMonth" class="block text-sm font-medium text-gray-700 mb-2">월 (선택)</label>
+                    <input type="number"
+                           id="importMonth"
+                           name="month"
+                           min="1"
+                           max="12"
+                           placeholder="비우면 연간 조회"
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black">
+                </div>
+            </div>
+
+            <div class="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-600">
+                월을 비워두면 해당 연도의 전체 공휴일을, 월을 입력하면 해당 월 공휴일만 조회합니다.
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button type="button"
+                        onclick="closeImportModal()"
+                        class="px-4 py-2.5 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition">
+                    취소
+                </button>
+                <button type="submit"
+                        class="px-4 py-2.5 rounded-xl bg-black text-white hover:bg-gray-800 transition">
+                    가져오기
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+
+    const createModal = document.getElementById('createModal');
+    const editModal = document.getElementById('editModal');
+    const importModal = document.getElementById('importModal');
+    const editForm = document.getElementById('editForm');
+
+    function showModal(modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function hideModal(modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function openCreateModal() {
+        showModal(createModal);
+    }
+
+    function closeCreateModal() {
+        hideModal(createModal);
+    }
+
+    function openImportModal() {
+        showModal(importModal);
+    }
+
+    function closeImportModal() {
+        hideModal(importModal);
+    }
+
+    function openEditModal(button) {
+        const id = button.dataset.id;
+        const title = button.dataset.title || '';
+        const description = button.dataset.description || '';
+        const date = button.dataset.date || '';
+        const active = button.dataset.active === 'true';
+
+        editForm.action = `/admin/holidays/${id}/edit`;
+        document.getElementById('editTitle').value = title;
+        document.getElementById('editDescription').value = description;
+        document.getElementById('editHolidayDate').value = date;
+        document.getElementById('editIsActive').value = active ? 'true' : 'false';
+
+        showModal(editModal);
+    }
+
+    function closeEditModal() {
+        hideModal(editModal);
+    }
+
+    [createModal, editModal, importModal].forEach(modal => {
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) {
+                hideModal(modal);
+            }
+        });
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeCreateModal();
+            closeEditModal();
+            closeImportModal();
+        }
+    });
+
+    document.querySelectorAll('.delete-form').forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const title = form.dataset.title || '휴무일';
+
+            Swal.fire({
+                title: '휴무일을 삭제할까요?',
+                text: `"${title}" 항목이 삭제됩니다.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '삭제',
+                cancelButtonText: '취소',
+                reverseButtons: true,
+                customClass: {
+                    confirmButton: 'swal2-confirm',
+                    cancelButton: 'swal2-cancel'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

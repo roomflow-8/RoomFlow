@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회의실 슬롯 관리 | RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="bg-gray-50">
+<div th:replace="~{fragments/header :: header}"></div>
+<th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
+
+<div class="flex w-full min-h-screen">
+    <div th:replace="~{fragments/admin-sidebar :: adminSidebar('system')}"></div>
+
+    <main class="flex-1 p-6">
+        <div th:replace="~{admin/system/system-tabs :: systemTabs('rooms')}"></div>
+
+        <section class="mt-6 space-y-6">
+            <!-- 상단 제목 -->
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">회의실 시간 슬롯 관리</h1>
+                    <p class="text-sm text-gray-500 mt-1">
+                        회의실별 특정 날짜의 시간 슬롯을 조회하고 상태를 관리합니다.
+                    </p>
+                </div>
+
+                <a th:href="@{/admin/rooms}"
+                   class="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-100 transition">
+                    회의실 목록으로
+                </a>
+            </div>
+
+            <!-- 회의실 요약 -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 px-5 py-4">
+                <div class="flex flex-wrap items-center gap-3 text-sm">
+                    <span class="text-lg font-bold text-gray-900" th:text="${page.summary.roomName}"></span>
+
+                    <span th:if="${page.summary.roomStatus.name() == 'AVAILABLE'}"
+                          class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+                        사용 가능
+                    </span>
+                    <span th:if="${page.summary.roomStatus.name() == 'MAINTENANCE'}"
+                          class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">
+                        점검중
+                    </span>
+                    <span th:if="${page.summary.roomStatus.name() != 'AVAILABLE' and page.summary.roomStatus.name() != 'MAINTENANCE'}"
+                          class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600">
+                        비활성
+                    </span>
+
+                    <span class="text-gray-500">· 전체 슬롯 <b th:text="${page.summary.totalSlotCount}"></b>개</span>
+                    <span class="text-gray-500">· 예약됨 <b th:text="${page.summary.reservedSlotCount}"></b>개</span>
+                    <span class="text-gray-500">· 예약 가능 <b th:text="${page.summary.availableSlotCount}"></b>개</span>
+                    <span class="text-gray-500">· 비활성 <b th:text="${page.summary.inactiveSlotCount}"></b>개</span>
+                    <span class="text-blue-600">· 관리 날짜 <b th:text="${page.summary.selectedDate}"></b></span>
+                </div>
+            </div>
+
+            <!-- 제어 영역 -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <!-- 조회 -->
+                    <form th:action="@{/admin/rooms/{roomId}/slots(roomId=${roomId})}"
+                          method="get"
+                          class="flex flex-col gap-2">
+                        <label for="date" class="text-sm font-medium text-gray-700">조회 날짜</label>
+                        <div class="flex gap-2">
+                            <input type="date"
+                                   id="date"
+                                   name="date"
+                                   th:value="${page.summary.selectedDate}"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
+                            <button type="submit"
+                                    class="shrink-0 px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition">
+                                조회
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- 해당 날짜 슬롯 생성 -->
+                    <form th:action="@{/admin/rooms/{roomId}/slots/generate(roomId=${roomId})}"
+                          method="post"
+                          th:object="${generateForm}"
+                          class="flex flex-col gap-2">
+                        <input type="hidden"
+                               th:name="${_csrf.parameterName}"
+                               th:value="${_csrf.token}">
+                        <label for="generateDate" class="text-sm font-medium text-gray-700">해당 날짜 슬롯 생성</label>
+                        <div class="flex gap-2">
+                            <input type="date"
+                                   id="generateDate"
+                                   th:field="*{date}"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
+                            <button type="submit"
+                                    class="shrink-0 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition">
+                                슬롯 생성
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- 해당 날짜 전체 상태 변경 -->
+                    <form th:action="@{/admin/rooms/{roomId}/slots/date-status(roomId=${roomId})}"
+                          method="post"
+                          th:object="${dateStatusForm}"
+                          class="flex flex-col gap-2">
+                        <input type="hidden"
+                               th:name="${_csrf.parameterName}"
+                               th:value="${_csrf.token}">
+                        <label for="dateStatusDate" class="text-sm font-medium text-gray-700">해당 날짜 전체 상태 변경</label>
+                        <div class="flex gap-2">
+                            <input type="date"
+                                   id="dateStatusDate"
+                                   th:field="*{date}"
+                                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
+                            <select th:field="*{active}"
+                                    class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200">
+                                <option th:value="true">전체 활성화</option>
+                                <option th:value="false">전체 비활성화</option>
+                            </select>
+                            <button type="submit"
+                                    class="shrink-0 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition">
+                                적용
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 슬롯 목록 -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900">슬롯 목록</h2>
+                    </div>
+
+                    <div class="text-sm text-gray-500">
+                        총 <span th:text="${#lists.size(page.slots)}">0</span>개
+                    </div>
+                </div>
+
+                <div th:if="${#lists.isEmpty(page.slots)}" class="px-6 py-16 text-center">
+                    <p class="text-gray-500 text-sm">해당 날짜에 생성된 슬롯이 없습니다.</p>
+                </div>
+
+                <div th:unless="${#lists.isEmpty(page.slots)}" class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-3 text-left font-semibold text-gray-700">시간</th>
+                            <th class="px-6 py-3 text-left font-semibold text-gray-700">상태</th>
+                            <th class="px-6 py-3 text-left font-semibold text-gray-700">예약 여부</th>
+                            <th class="px-6 py-3 text-left font-semibold text-gray-700">관리</th>
+                        </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                        <tr th:each="slot : ${page.slots}" class="hover:bg-gray-50 transition">
+                            <td class="px-6 py-4 text-gray-800">
+                                <div class="font-medium"
+                                     th:text="${#temporals.format(slot.slotStartAt, 'HH:mm')} + ' ~ ' + ${#temporals.format(slot.slotEndAt, 'HH:mm')}">
+                                    09:00 ~ 09:30
+                                </div>
+                            </td>
+
+                            <td class="px-6 py-4">
+                                <span th:if="${slot.active}"
+                                      class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+                                    활성
+                                </span>
+                                <span th:unless="${slot.active}"
+                                      class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600">
+                                    비활성
+                                </span>
+                            </td>
+
+                            <td class="px-6 py-4">
+                                <span th:if="${slot.reserved}"
+                                      class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">
+                                    예약됨
+                                </span>
+                                <span th:unless="${slot.reserved}"
+                                      class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                                    예약 없음
+                                </span>
+                            </td>
+
+                            <td class="px-6 py-4">
+                                <form th:action="@{/admin/rooms/{roomId}/slots/{roomSlotId}/status(roomId=${roomId}, roomSlotId=${slot.roomSlotId})}"
+                                      method="post"
+                                      class="inline-flex items-center gap-2">
+                                    <input type="hidden"
+                                           th:name="${_csrf.parameterName}"
+                                           th:value="${_csrf.token}">
+                                    <input type="hidden" name="date" th:value="${page.summary.selectedDate}">
+                                    <input type="hidden" name="active" th:value="${!slot.active}">
+
+                                    <button type="submit"
+                                            th:if="${slot.active}"
+                                            class="px-3 py-2 rounded-lg bg-red-600 text-white text-xs font-medium hover:bg-red-700 transition">
+                                        비활성화
+                                    </button>
+
+                                    <button type="submit"
+                                            th:unless="${slot.active}"
+                                            class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 transition">
+                                        활성화
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+                <p class="text-sm text-blue-800">
+                    예약된 슬롯은 비활성화할 수 없으며, 과거 슬롯은 수정할 수 없습니다.
+                </p>
+            </div>
+        </section>
+    </main>
+</div>
+<script>
+    lucide.createIcons();
+</script>
+</body>
+</html>

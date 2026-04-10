@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입 - RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
+</head>
+<body class="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
+
+<div class="w-full max-w-md rounded-xl border bg-white shadow-sm p-8">
+    <div class="text-center mb-6">
+        <img th:src="@{/images/logo_tmp.png}" alt="RoomFlow 로고" class="w-16 h-16 object-contain mx-auto mb-3">
+        <h1 class="text-2xl font-bold text-gray-900 mb-1">회원가입</h1>
+        <p class="text-sm text-gray-500 leading-6">새 계정을 만들어 회의실을 예약하세요</p>
+    </div>
+
+    <!-- 에러 메시지 -->
+    <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-center text-sm text-red-600" th:if="${errorMsg}" th:text="${errorMsg}"></div>
+
+    <form th:action="@{/users/signup}" method="post" class="space-y-4">
+
+        <!-- 이름 -->
+        <div class="space-y-2">
+            <label for="name" class="block text-sm font-medium text-gray-700">이름</label>
+            <input type="text"
+                   id="name"
+                   name="name"
+                   th:value="${name}"
+                   placeholder="한글 2~10자 또는 영문 2~20자"
+                   class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
+                   required />
+            <p class="text-xs text-gray-400">한글 2~10자 또는 영문 2~20자</p>
+        </div>
+
+        <!-- 이메일 -->
+        <div class="space-y-2">
+            <label for="email" class="block text-sm font-medium text-gray-700">아이디 (이메일)</label>
+            <div class="flex gap-2">
+                <input type="email"
+                       id="email"
+                       name="email"
+                       th:value="${email}"
+                       placeholder="example@email.com"
+                       class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
+                       required />
+                <button type="button"
+                        id="sendCodeBtn"
+                        onclick="sendVerificationCode()"
+                        th:disabled="${emailVerified}"
+                        class="h-[50px] px-4 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 whitespace-nowrap">
+                    <span th:text="${emailVerified} ? '인증완료' : '인증번호 발송'">인증번호 발송</span>
+                </button>
+            </div>
+
+            <!-- 인증번호 입력칸 (발송 후에만 보임) -->
+            <div id="verifySection" class="hidden flex gap-2">
+                <input type="text"
+                       id="verifyCodeInput"
+                       placeholder="인증번호 6자리 입력"
+                       maxlength="6"
+                       class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900" />
+                <button type="button"
+                        onclick="checkVerifyCode()"
+                        class="h-[50px] px-4 rounded-md bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 whitespace-nowrap">
+                    확인
+                </button>
+            </div>
+
+            <!-- 상태 메시지 -->
+            <p id="emailMsg" class="text-xs"
+               th:classappend="${emailVerified} ? 'text-green-600' : ''"
+               th:text="${emailVerified} ? '✓ 이메일 인증이 완료되었습니다.' : ''"></p>
+        </div>
+
+        <!-- 비밀번호 -->
+        <div class="space-y-2">
+            <label for="password" class="block text-sm font-medium text-gray-700">비밀번호</label>
+            <input type="password"
+                   id="password"
+                   name="password"
+                   placeholder="영문, 숫자, 특수문자 포함 8자 이상"
+                   class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
+                   required />
+            <p class="text-xs text-gray-400">영문, 숫자, 특수문자 포함 8자 이상</p>
+        </div>
+
+        <!-- 비밀번호 확인 -->
+        <div class="space-y-2">
+            <label for="passwordConfirm" class="block text-sm font-medium text-gray-700">비밀번호 확인</label>
+            <input type="password"
+                   id="passwordConfirm"
+                   name="passwordConfirm"
+                   placeholder="비밀번호를 다시 입력하세요"
+                   class="flex w-full h-[50px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-900"
+                   required />
+        </div>
+
+        <button type="submit" class="inline-flex items-center justify-center w-full h-[50px] rounded-md bg-slate-900 text-white text-lg font-medium hover:bg-slate-800 transition-colors">회원가입</button>
+    </form>
+
+    <div class="text-center text-sm text-gray-600 mt-4">
+        이미 계정이 있으신가요? <a th:href="@{/users/login}" class="text-slate-900 hover:underline font-medium">로그인</a>
+    </div>
+
+    <div class="text-center mt-2">
+        <a th:href="@{/rooms}" class="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors">홈으로 돌아가기</a>
+    </div>
+</div>
+
+<script>
+    // 인증번호 발송
+    function sendVerificationCode() {
+        const email = document.getElementById('email').value;
+        if (!email) {
+            alert('이메일을 입력해주세요.');
+            return;
+        }
+
+        document.getElementById('sendCodeBtn').disabled = true;
+        document.getElementById('sendCodeBtn').textContent = '발송 중...';
+
+        fetch('/users/email/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'email=' + encodeURIComponent(email)
+        })
+        .then(response => response.text().then(text => ({ ok: response.ok, text })))
+        .then(({ ok, text }) => {
+            const msg = document.getElementById('emailMsg');
+            if (ok) {
+                msg.textContent = '인증번호가 발송되었습니다. 이메일을 확인해주세요.';
+                msg.className = 'text-xs text-blue-600';
+                document.getElementById('verifySection').classList.remove('hidden');
+            } else {
+                msg.textContent = text;
+                msg.className = 'text-xs text-red-500';
+            }
+            document.getElementById('sendCodeBtn').disabled = false;
+            document.getElementById('sendCodeBtn').textContent = '재발송';
+        });
+    }
+
+    // 인증번호 확인
+    function checkVerifyCode() {
+        const code = document.getElementById('verifyCodeInput').value;
+        if (!code) {
+            alert('인증번호를 입력해주세요.');
+            return;
+        }
+
+        fetch('/users/email/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'code=' + encodeURIComponent(code)
+        })
+        .then(response => response.text().then(text => ({ ok: response.ok, text })))
+        .then(({ ok, text }) => {
+            const msg = document.getElementById('emailMsg');
+            if (ok) {
+                msg.textContent = '✓ 이메일 인증이 완료되었습니다.';
+                msg.className = 'text-xs text-green-600';
+                document.getElementById('verifySection').classList.add('hidden');
+                document.getElementById('sendCodeBtn').disabled = true;
+            } else {
+                msg.textContent = text;
+                msg.className = 'text-xs text-red-500';
+            }
+        });
+    }
+</script>
+</body>
+</html>

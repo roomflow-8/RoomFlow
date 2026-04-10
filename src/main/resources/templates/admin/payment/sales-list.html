@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>매출 관리 | RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+<div th:replace="~{fragments/header :: header}"></div>
+<th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
+
+<div class="flex w-full min-h-screen">
+    <div th:replace="~{fragments/admin-sidebar :: adminSidebar('sales')}"></div>
+
+    <main class="flex-1 p-6">
+        <!-- 페이지 헤더 -->
+        <section class="mb-6">
+            <div class="mb-6 flex items-center justify-between">
+
+                <!-- 왼쪽: 제목 + 설명 -->
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">매출 관리</h1>
+                    <p class="mt-1 text-sm text-gray-500">
+                        결제 완료된 내역을 기준으로 매출 현황을 확인할 수 있습니다.
+                    </p>
+                </div>
+
+                <!-- 오른쪽: 엑셀 다운로드 버튼 -->
+                <a href="/admin/sales/excel"
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-lg
+                          border border-gray-200 bg-white text-sm font-medium text-gray-700
+                          hover:bg-gray-50 hover:border-gray-300 transition">
+
+                    <!-- 아이콘 -->
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         class="w-4 h-4"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke="currentColor"
+                         stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/>
+                    </svg>
+
+                    엑셀 다운로드
+                </a>
+
+            </div>
+        </section>
+
+        <!-- 요약 카드 -->
+        <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <p class="text-sm font-medium text-gray-500">총 매출</p>
+                <div class="mt-3 flex items-end justify-between">
+                    <p class="text-2xl font-bold text-gray-900"
+                       th:text="${#numbers.formatInteger(summary.totalSales(), 3, 'COMMA')} + '원'">
+                        0원
+                    </p>
+                    <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M3 10.5L12 4l9 6.5M5 9.5V19a1 1 0 001 1h12a1 1 0 001-1V9.5"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <p class="text-sm font-medium text-gray-500">회의실 매출</p>
+                <div class="mt-3 flex items-end justify-between">
+                    <p class="text-2xl font-bold text-gray-900"
+                       th:text="${#numbers.formatInteger(summary.roomSales(), 3, 'COMMA')} + '원'">
+                        0원
+                    </p>
+                    <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M4 7h16M6 7v10m12-10v10M8 17h8M9 11h.01M15 11h.01"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <p class="text-sm font-medium text-gray-500">비품 매출</p>
+                <div class="mt-3 flex items-end justify-between">
+                    <p class="text-2xl font-bold text-gray-900"
+                       th:text="${#numbers.formatInteger(summary.equipmentSales(), 3, 'COMMA')} + '원'">
+                        0원
+                    </p>
+                    <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M20 7l-8-4-8 4m16 0v10l-8 4m8-14l-8 4m0 10L4 17V7m8 4L4 7m8 4l8-4"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <p class="text-sm font-medium text-gray-500">결제 완료 건수</p>
+                <div class="mt-3 flex items-end justify-between">
+                    <p class="text-2xl font-bold text-gray-900"
+                       th:text="${#numbers.formatInteger(summary.doneCount(), 1, 'COMMA')} + '건'">
+                        0건
+                    </p>
+                    <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" fill="none"
+                             viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M9 12l2 2 4-4M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 목록 -->
+        <section class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            <div class="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900">매출 내역</h2>
+                    <p class="mt-1 text-sm text-gray-500">
+                        결제 완료된 내역만 표시됩니다.
+                    </p>
+                </div>
+                <div class="text-sm text-gray-500">
+                    총
+                    <span class="font-semibold text-gray-900"
+                          th:text="${#numbers.formatInteger(summary.doneCount(), 1, 'COMMA')}">0</span>건
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr class="text-left text-gray-500">
+                        <th class="px-6 py-4 font-semibold">승인일시</th>
+                        <th class="px-6 py-4 font-semibold">주문번호</th>
+                        <th class="px-6 py-4 font-semibold">주문명</th>
+                        <th class="px-6 py-4 font-semibold">예약자</th>
+                        <th class="px-6 py-4 font-semibold text-right">회의실 금액</th>
+                        <th class="px-6 py-4 font-semibold text-right">비품 금액</th>
+                        <th class="px-6 py-4 font-semibold text-right">총 금액</th>
+                        <th class="px-6 py-4 font-semibold">결제수단</th>
+                        <th class="px-6 py-4 font-semibold text-center">상태</th>
+                        <th class="px-6 py-4 font-semibold text-center">영수증</th>
+                    </tr>
+                    </thead>
+
+                    <tbody class="divide-y divide-gray-100">
+                    <tr th:if="${#lists.isEmpty(payments)}">
+                        <td colspan="10" class="px-6 py-16 text-center text-gray-400">
+                            조회된 매출 내역이 없습니다.
+                        </td>
+                    </tr>
+
+                    <tr th:each="payment : ${payments}" class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-700"
+                            th:text="${payment.approvedAt() != null ? #temporals.format(payment.approvedAt(), 'yyyy-MM-dd HH:mm') : '-'}">
+                            2026-04-08 14:00
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900"
+                            th:text="${payment.orderId()}">
+                            ORDER-001
+                        </td>
+
+                        <td class="px-6 py-4 min-w-[320px] text-gray-700">
+                            <div class="max-w-[360px] truncate" th:title="${payment.orderName()}"
+                                 th:text="${payment.orderName()}">
+                                회의실B 2026-04-24 13:00 - 14:00, 비품 3건
+                            </div>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-700"
+                            th:text="${payment.userName()}">
+                            홍길동
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-gray-700"
+                            th:text="${#numbers.formatInteger(payment.roomAmount(), 3, 'COMMA')} + '원'">
+                            30,000원
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-gray-700"
+                            th:text="${#numbers.formatInteger(payment.equipmentAmount(), 3, 'COMMA')} + '원'">
+                            10,000원
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-gray-900"
+                            th:text="${#numbers.formatInteger(payment.totalAmount(), 3, 'COMMA')} + '원'">
+                            40,000원
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-700"
+                            th:text="${payment.method() != null ? payment.method() : '-'}">
+                            카드
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                  th:text="${payment.status()}">
+                                DONE
+                            </span>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <a th:if="${payment.receiptUrl() != null and !#strings.isEmpty(payment.receiptUrl())}"
+                               th:href="${payment.receiptUrl()}"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               class="inline-flex items-center justify-center px-3 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                                보기
+                            </a>
+                            <span th:unless="${payment.receiptUrl() != null and !#strings.isEmpty(payment.receiptUrl())}"
+                                  class="text-gray-400">
+                                -
+                            </span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+</div>
+<script>
+    lucide.createIcons();
+</script>
+</body>
+</html>

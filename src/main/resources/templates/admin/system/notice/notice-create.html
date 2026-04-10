@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공지사항 등록 | RoomFlow</title>
+    <link rel="icon" type="image/png" th:href="@{/images/logo_tmp.png}">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="bg-gray-50">
+<div th:replace="~{fragments/header :: header}"></div>
+<th:block th:replace="~{fragments/alert-script :: alertScript}"></th:block>
+
+<div class="flex w-full min-h-screen">
+    <div th:replace="~{fragments/admin-sidebar :: adminSidebar('system')}"></div>
+
+    <main class="flex-1 p-6">
+        <div th:replace="~{admin/system/system-tabs :: systemTabs('notices')}"></div>
+
+        <div class="mb-6">
+            <h1 class="text-2xl font-bold text-gray-900 mt-2">공지사항 등록</h1>
+            <p class="text-sm text-gray-500 mt-1">사용자에게 전달할 공지사항을 등록합니다.</p>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-5xl">
+            <form th:action="@{/admin/notices/create}"
+                  method="post"
+                  th:object="${createForm}"
+                  class="space-y-6">
+
+                <input type="hidden"
+                       th:name="${_csrf.parameterName}"
+                       th:value="${_csrf.token}">
+
+                <div th:if="${createErrorMessage != null}"
+                     class="px-4 py-3 rounded-lg bg-red-50 text-red-600 text-sm"
+                     th:text="${createErrorMessage}">
+                </div>
+
+                <div>
+                    <label for="title" class="block text-sm font-medium text-gray-700 mb-2">제목</label>
+                    <input type="text"
+                           id="title"
+                           th:field="*{title}"
+                           class="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                           placeholder="공지 제목을 입력해주세요.">
+                    <p th:if="${#fields.hasErrors('title')}"
+                       th:errors="*{title}"
+                       class="mt-2 text-sm text-red-500"></p>
+                </div>
+
+                <div>
+                    <label for="content" class="block text-sm font-medium text-gray-700 mb-2">내용</label>
+                    <textarea id="content"
+                              th:field="*{content}"
+                              rows="16"
+                              class="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm leading-6 resize-y min-h-[340px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              placeholder="공지 내용을 입력해주세요. 줄바꿈은 그대로 반영됩니다."></textarea>
+                    <p th:if="${#fields.hasErrors('content')}"
+                       th:errors="*{content}"
+                       class="mt-2 text-sm text-red-500"></p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer hover:border-blue-200 hover:bg-blue-50/30">
+                        <input type="checkbox" th:field="*{pinned}" class="h-4 w-4 mt-0.5">
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">상단 고정</p>
+                            <p class="text-xs text-gray-500 mt-1">목록 상단에 우선 노출됩니다.</p>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer hover:border-blue-200 hover:bg-blue-50/30">
+                        <input type="checkbox" th:field="*{visible}" class="h-4 w-4 mt-0.5">
+                        <div>
+                            <p class="text-sm font-medium text-gray-800">사용자 노출</p>
+                            <p class="text-xs text-gray-500 mt-1">사용자 공지 목록에 공개됩니다.</p>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="flex items-center justify-between pt-2">
+                    <a th:href="@{/admin/notices}"
+                       class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        목록으로
+                    </a>
+
+                    <div class="flex items-center gap-3">
+                        <a th:href="@{/admin/notices}"
+                           class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            취소
+                        </a>
+                        <button type="submit"
+                                class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700">
+                            등록
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+<script>
+    lucide.createIcons();
+</script>
+</body>
+</html>
